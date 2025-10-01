@@ -29,8 +29,13 @@
     <!-- Nav Item - Pages Collapse Menu -->
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=ormawa">
-        <i class="fa-solid fa-users"></i>
-            <span>Ormawa</span></a>
+            <i class="fa-solid fa-users"></i>
+            <span>Data Ormawa</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="">
+            <i class="fa-solid fa-id-card"></i>
+            <span>Account Ormawa</span></a>
     </li>
 
     <li class="nav-item">
@@ -48,8 +53,8 @@
         <div id="collapseUtilities" class="collapse" aria-labelledby="headingUtilities" data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Openn Recruitmen</h6>
-                <a class="collapse-item" href="Index.php?page=oprec">Ormawa</a>
-                <a class="collapse-item" href="utilities-border.html">Event</a>
+                <a class="collapse-item" href="Index.php?page=oprec">Anggota Ormawa</a>
+                <a class="collapse-item" href="utilities-border.html">Panitia Event</a>
             </div>
     </li>
 

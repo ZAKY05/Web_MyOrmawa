@@ -57,10 +57,19 @@
                             <td><span class="badge bg-primary">Proposal</span></td>
                             <td>Proposal Kegiatan Bakti Sosial</td>
                             <td>12 Apr 2024</td>
-                            <td>
-                                <a href="#" class="btn btn-sm btn-outline-primary" title="Lihat"><i class="fas fa-eye"></i></a>
-                                <a href="#" class="btn btn-sm btn-outline-success" title="Unduh"><i class="fas fa-download"></i></a>
-                                <a href="#" class="btn btn-sm btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                            <td>  
+                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalForm">
+                                <i class="fas fa-eye"></i> Lihat
+                                </button>
+                                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalForm">
+                                    <i class="fas fa-download"></i> Unduh
+                                </button>
+                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalForm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="return confirm('Yakin hapus data ini?')">
+                                    <i class="fas fa-trash"></i> Hapus
+                                </button>
                             </td>
                         </tr>
                         <!-- Data lainnya tetap sama -->
