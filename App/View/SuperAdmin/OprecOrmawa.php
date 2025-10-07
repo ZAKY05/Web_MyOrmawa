@@ -208,9 +208,36 @@ include('../SuperAdmin/Header.php');
                                             <a href="?page=oprec&form_id=<?= $form['id'] ?>" class="btn btn-info btn-sm btn-circle" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="../../../Function/FormFunction.php?action=delete_form&id=<?= $form['id'] ?>" class="btn btn-danger btn-sm btn-circle" title="Hapus" onclick="return confirm('Hapus formulir &quot;<?= addslashes($form['judul']) ?>&quot;?')">
+                                            <button class="btn btn-danger btn-sm btn-circle" title="Hapus" 
+                                                    data-toggle="modal" 
+                                                    data-target="#deleteFormModal<?= $form['id'] ?>">
                                                 <i class="fas fa-trash"></i>
-                                            </a>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Modal Konfirmasi Hapus Form -->
+                                <div class="modal fade" id="deleteFormModal<?= $form['id'] ?>" tabindex="-1" role="dialog" aria-labelledby="deleteFormModalLabel<?= $form['id'] ?>" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="deleteFormModalLabel<?= $form['id'] ?>">Konfirmasi Hapus</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                Apakah Anda yakin ingin menghapus formulir <strong>"<?= htmlspecialchars($form['judul']) ?>"</strong>? 
+                                                <br><br>
+                                                <span class="text-danger">Semua field dan data yang terkait akan ikut terhapus!</span>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
+                                                <a class="btn btn-danger" href="../../../Function/FormFunction.php?action=delete_form&id=<?= $form['id'] ?>">
+                                                    <i class="fas fa-trash"></i> Hapus
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -442,16 +469,44 @@ include('../SuperAdmin/Header.php');
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
-                                                    <form method="POST" action="../../../Function/FormFunction.php" class="d-inline" onsubmit="return confirm('Hapus field ini?')">
-                                                        <input type="hidden" name="action" value="delete_field">
-                                                        <input type="hidden" name="delete_id" value="<?= $field['id'] ?>">
-                                                        <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
-                                                        <button type="submit" class="btn btn-danger btn-sm btn-circle">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="btn btn-danger btn-sm btn-circle" 
+                                                            data-toggle="modal" 
+                                                            data-target="#deleteFieldModal<?= $field['id'] ?>"
+                                                            title="Hapus Field">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </td>
                                             </tr>
+
+                                            <!-- Modal Konfirmasi Hapus Field -->
+                                            <div class="modal fade" id="deleteFieldModal<?= $field['id'] ?>" tabindex="-1" role="dialog" aria-labelledby="deleteFieldModalLabel<?= $field['id'] ?>" aria-hidden="true">
+                                                <div class="modal-dialog" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="deleteFieldModalLabel<?= $field['id'] ?>">Konfirmasi Hapus Field</h5>
+                                                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">×</span>
+                                                            </button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            Apakah Anda yakin ingin menghapus field <strong>"<?= htmlspecialchars($field['label']) ?>"</strong>?
+                                                            <br><br>
+                                                            <span class="text-danger">Field ini akan dihapus secara permanen!</span>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
+                                                            <form method="POST" action="../../../Function/FormFunction.php" class="d-inline">
+                                                                <input type="hidden" name="action" value="delete_field">
+                                                                <input type="hidden" name="delete_id" value="<?= $field['id'] ?>">
+                                                                <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
+                                                                <button type="submit" class="btn btn-danger">
+                                                                    <i class="fas fa-trash"></i> Hapus
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
