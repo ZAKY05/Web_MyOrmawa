@@ -33,7 +33,7 @@
             <span>Data Ormawa</span></a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="">
+        <a class="nav-link" href="Index.php ?page=account">
             <i class="fa-solid fa-id-card"></i>
             <span>Account Ormawa</span></a>
     </li>
@@ -75,7 +75,7 @@
 
     <!-- Nav Item - Charts -->
     <li class="nav-item">
-        <a class="nav-link" href="#">
+        <a class="nav-link" href="Index.php ?page=kompetisi">
             <i class="fa-solid fa-trophy"></i>
             <span>Kompetisi</span></a>
     </li>
