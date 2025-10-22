@@ -14,7 +14,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_form_info') {
     // Handle upload gambar
     $gambar_nama = '';
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
-        $target_dir = "../uploads/form"; 
+        $target_dir = "../uploads/form/"; 
         $gambar_nama_asli = basename($_FILES["gambar"]["name"]);
         $target_file = $target_dir . $gambar_nama_asli;
         $uploadOk = 1;
@@ -96,7 +96,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
     // Handle upload gambar baru (jika ada)
     $gambar_nama = $gambar_lama;
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0 && $_FILES['gambar']['size'] > 0) {
-        $target_dir = "../uploads/form"; // PERBAIKAN: Typo path diperbaiki
+        $target_dir = "../uploads/form/"; // PERBAIKAN: Typo path diperbaiki
         $gambar_nama_asli_baru = basename($_FILES["gambar"]["name"]);
         $target_file = $target_dir . $gambar_nama_asli_baru;
         $uploadOk = 1;
@@ -179,8 +179,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_form') {
         $stmt->close();
 
         // Hapus file gambar dari server jika ada
-        if ($gambar_nama && file_exists("../uploads/form" . $gambar_nama)) {
-            unlink("../uploads/form" . $gambar_nama);
+        if ($gambar_nama && file_exists("../uploads/form/" . $gambar_nama)) {
+            unlink("../uploads/form/" . $gambar_nama);
         }
 
         header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&deleted=form");
