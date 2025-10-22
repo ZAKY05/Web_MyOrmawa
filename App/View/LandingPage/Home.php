@@ -1,4 +1,31 @@
-<?php include('../SuperAdmin/Header.php'); ?>
+<?php
+include('../SuperAdmin/Header.php');
+include('../../../Config/ConnectDB.php');
+
+function getOrmawaData($koneksi) {
+    $sql = "SELECT id, nama_ormawa, deskripsi, logo FROM ormawa ORDER BY nama_ormawa ASC";
+    $result = mysqli_query($koneksi, $sql);
+    $data = [];
+    if ($result) {
+        while($row = mysqli_fetch_assoc($result)) {
+            $data[] = $row;
+        }
+        mysqli_free_result($result);
+    } else {
+        echo "Error: " . mysqli_error($koneksi);
+    }
+    return $data;
+}
+$ormawa_list = getOrmawaData($koneksi);
+$logo_dir = '../uploads/logos/'; // Path dari Home.php ke folder uploads/logos
+
+// Fungsi untuk membagi array menjadi chunk 3
+function array_chunk_3($array) {
+    return array_chunk($array, 3, true);
+}
+$ormawa_chunks = array_chunk_3($ormawa_list);
+?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -7,10 +34,135 @@
     <title>Ormawa Kampus - Organisasi Mahasiswa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../../Asset/Css/LandingPage.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        /* Gaya untuk slider Ormawa */
+        .structure-section {
+            padding: 100px 0;
+        }
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .section-title h2 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .text-gradient {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .ormawa-slider-container {
+            position: relative;
+            overflow: hidden;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+        .ormawa-slider-wrapper {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+        .ormawa-slide {
+            display: flex;
+            min-width: 100%;
+            gap: 2rem;
+        }
+        .ormawa-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            flex: 1 1 calc(33.333% - 2rem); /* Membuat 3 card per slide */
+        }
+        .ormawa-card:hover {
+            transform: translateY(-10px);
+        }
+        .ormawa-logo {
+            width: 100%;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            padding: 1rem;
+        }
+        .ormawa-logo img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .ormawa-content {
+            padding: 1.5rem;
+        }
+        .ormawa-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        .ormawa-description {
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        .btn-primary {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .btn-primary:hover {
+            background-color: #5a6fd8;
+            border-color: #5a6fd8;
+        }
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        .ormawa-slider-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .ormawa-arrow {
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #667eea;
+            background: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .ormawa-arrow:hover {
+            background-color: #667eea;
+            color: white;
+        }
+        .ormawa-dots {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .ormawa-dot {
+            cursor: pointer;
+            height: 10px;
+            width: 10px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        .ormawa-dot.active {
+            background-color: #667eea;
+        }
+    </style>
 </head>
 
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top">
         <div class="container">
             <a class="navbar-brand text-gradient" href="#home">
@@ -45,9 +197,7 @@
         </div>
     </nav>
 
-    <!-- Hero Slider -->
     <section id="home" class="hero-slider">
-        <!-- Slide 1 -->
         <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1920');">
             <div class="slide-overlay">
                 <div class="container">
@@ -61,7 +211,6 @@
             </div>
         </div>
 
-        <!-- Slide 2 -->
         <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1920');">
             <div class="slide-overlay">
                 <div class="container">
@@ -75,7 +224,6 @@
             </div>
         </div>
 
-        <!-- Slide 3 -->
         <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=1920');">
             <div class="slide-overlay">
                 <div class="container">
@@ -89,7 +237,6 @@
             </div>
         </div>
 
-        <!-- Slider Controls -->
         <div class="slider-arrow prev" onclick="changeSlide(-1)">
             <i class="bi bi-chevron-left fs-4"></i>
         </div>
@@ -97,7 +244,6 @@
             <i class="bi bi-chevron-right fs-4"></i>
         </div>
 
-        <!-- Slider Navigation -->
         <div class="slider-nav">
             <span class="slider-dot active" onclick="goToSlide(0)"></span>
             <span class="slider-dot" onclick="goToSlide(1)"></span>
@@ -105,7 +251,6 @@
         </div>
     </section>
 
-    <!-- Activities Section -->
     <section id="kegiatan">
         <div class="container">
             <div class="section-title">
@@ -229,113 +374,47 @@
 
             <div class="ormawa-slider-container">
                 <div class="ormawa-slider-wrapper" id="ormawaSlider">
-                    <!-- Slide 1 -->
-                    <div class="ormawa-slide">
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/667eea/ffffff?text=BD" alt="Logo BD">
+                    <?php if (!empty($ormawa_chunks)): ?>
+                        <?php foreach ($ormawa_chunks as $index => $chunk): ?>
+                            <div class="ormawa-slide">
+                                <?php foreach ($chunk as $ormawa): ?>
+                                    <div class="ormawa-card">
+                                        <div class="ormawa-logo">
+                                            <?php
+                                            $logo_nama_file = $ormawa['logo'];
+                                            $logo_path = $logo_dir . $logo_nama_file;
+                                            $logo_url = ($logo_nama_file && file_exists(__DIR__ . '/../../../uploads/logos/' . $logo_nama_file)) ? '../../../uploads/logos/' . $logo_nama_file : 'https://via.placeholder.com/150/667eea/ffffff?text=' . substr($ormawa['nama_ormawa'], 0, 2);
+                                            ?>
+                                            <img src="<?php echo $logo_url; ?>" alt="Logo <?php echo htmlspecialchars($ormawa['nama_ormawa']); ?>">
+                                        </div>
+                                        <div class="ormawa-content">
+                                            <h5 class="ormawa-title"><?php echo htmlspecialchars($ormawa['nama_ormawa']); ?></h5>
+                                            <p class="ormawa-description"><?php echo htmlspecialchars(substr($ormawa['deskripsi'], 0, 100)) . (strlen($ormawa['deskripsi']) > 100 ? '...' : ''); ?></p>
+                                            <button class="btn btn-primary btn-sm">Selengkapnya</button>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                                <!-- Pastikan selalu ada 3 card per slide, tambahkan placeholder jika perlu -->
+                                <?php for($i = count($chunk); $i < 3; $i++): ?>
+                                    <div class="ormawa-card" style="visibility: hidden; border: none; box-shadow: none;">
+                                        <div class="ormawa-logo">
+                                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+                                        </div>
+                                        <div class="ormawa-content">
+                                            <h5 class="ormawa-title">&nbsp;</h5>
+                                            <p class="ormawa-description">&nbsp;</p>
+                                        </div>
+                                    </div>
+                                <?php endfor; ?>
                             </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Bisnis Digital</h5>
-                                <p class="ormawa-description">Himpunan mahasiswa yang fokus pada pengembangan kompetensi bisnis digital dan kewirausahaan.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/764ba2/ffffff?text=TI" alt="Logo TI">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Teknologi Informasi</h5>
-                                <p class="ormawa-description">Wadah mahasiswa IT untuk mengembangkan skill programming, networking, dan teknologi terkini.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/00D7FF/ffffff?text=TM" alt="Logo TM">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Teknik Mesin</h5>
-                                <p class="ormawa-description">Organisasi mahasiswa teknik mesin yang berfokus pada inovasi dan pengembangan teknologi mesin.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide 2 -->
-                    <div class="ormawa-slide">
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/667eea/ffffff?text=AK" alt="Logo AK">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Akuntansi</h5>
-                                <p class="ormawa-description">Himpunan mahasiswa akuntansi yang fokus pada pengelolaan dan pelaporan informasi keuangan.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="ormawa-slide">
+                            <div class="col-12">
+                                <p class="text-center">Belum ada data Organisasi Mahasiswa.</p>
                             </div>
                         </div>
-
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/764ba2/ffffff?text=MP" alt="Logo MP">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Manajemen Perkantoran</h5>
-                                <p class="ormawa-description">Organisasi yang fokus pada pengelolaan administrasi dan operasional perkantoran.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/00D7FF/ffffff?text=TE" alt="Logo TE">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Teknik Elektro</h5>
-                                <p class="ormawa-description">Wadah mahasiswa elektro untuk pengembangan teknologi kelistrikan dan elektronika.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Slide 3 -->
-                    <div class="ormawa-slide">
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/667eea/ffffff?text=TS" alt="Logo TS">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Teknik Sipil</h5>
-                                <p class="ormawa-description">Himpunan mahasiswa teknik sipil yang fokus pada infrastruktur dan konstruksi.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/764ba2/ffffff?text=LB" alt="Logo LB">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Layanan Perbankan</h5>
-                                <p class="ormawa-description">Organisasi yang mengembangkan kompetensi di bidang perbankan dan layanan keuangan.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-
-                        <div class="ormawa-card">
-                            <div class="ormawa-logo">
-                                <img src="https://via.placeholder.com/150/00D7FF/ffffff?text=PW" alt="Logo PW">
-                            </div>
-                            <div class="ormawa-content">
-                                <h5 class="ormawa-title">HMJ Pariwisata</h5>
-                                <p class="ormawa-description">Wadah mahasiswa pariwisata untuk mengembangkan industri hospitality dan tourism.</p>
-                                <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                            </div>
-                        </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -345,9 +424,9 @@
                     <i class="bi bi-chevron-left"></i>
                 </span>
                 <div class="ormawa-dots">
-                    <span class="ormawa-dot active" onclick="goToOrmawaSlide(0)"></span>
-                    <span class="ormawa-dot" onclick="goToOrmawaSlide(1)"></span>
-                    <span class="ormawa-dot" onclick="goToOrmawaSlide(2)"></span>
+                    <?php for($i = 0; $i < count($ormawa_chunks); $i++): ?>
+                        <span class="ormawa-dot <?php echo $i === 0 ? 'active' : ''; ?>" onclick="goToOrmawaSlide(<?php echo $i; ?>)"></span>
+                    <?php endfor; ?>
                 </div>
                 <span class="ormawa-arrow" onclick="changeOrmawaSlide(1)">
                     <i class="bi bi-chevron-right"></i>
@@ -356,7 +435,6 @@
         </div>
     </section>
 
-    <!-- Contact Section -->
     <section id="kontak" class="contact-section">
         <div class="container">
             <div class="section-title">
@@ -421,7 +499,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <div class="row g-4">
@@ -493,7 +570,42 @@
         </div>
     </footer>
 
+    <script>
+        let currentOrmawaSlide = 0;
+        const totalOrmawaSlides = <?php echo count($ormawa_chunks); ?>;
 
+        function showOrmawaSlide(n) {
+            const slides = document.querySelectorAll('.ormawa-slide');
+            const dots = document.querySelectorAll('.ormawa-dot');
+            if (slides.length === 0) return;
+
+            if (n >= slides.length) currentOrmawaSlide = 0;
+            if (n < 0) currentOrmawaSlide = slides.length - 1;
+
+            slides.forEach(slide => slide.style.display = 'none');
+            dots.forEach(dot => dot.classList.remove('active'));
+
+            slides[currentOrmawaSlide].style.display = 'flex';
+            dots[currentOrmawaSlide].classList.add('active');
+            // Update the wrapper transform for consistency if using flex
+            const wrapper = document.getElementById('ormawaSlider');
+            wrapper.style.transform = `translateX(-${currentOrmawaSlide * 100}%)`;
+        }
+
+        function changeOrmawaSlide(n) {
+            showOrmawaSlide(currentOrmawaSlide += n);
+        }
+
+        function goToOrmawaSlide(n) {
+            currentOrmawaSlide = n;
+            showOrmawaSlide(currentOrmawaSlide);
+        }
+
+        // Initialize slider
+        document.addEventListener('DOMContentLoaded', function() {
+            showOrmawaSlide(currentOrmawaSlide);
+        });
+    </script>
     <script src="../../../Asset/Js/LandingPage.js"></script>
 </body>
 </html>
