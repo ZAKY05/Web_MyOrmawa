@@ -43,7 +43,7 @@ if (isset($_POST['login'])) {
         // Redirect berdasarkan level
         switch ($user['level']) {
             case '1':
-                header("Location: /MyOrmawa/App/View/SuperAdmin/Index.php?page=dashboard");
+                header("Location: ../App/View/SuperAdmin/Index.php?page=dashboard");
                 break;
             case '2':
                 header("Location: ../App/View/Admin/Dashboard.php");
