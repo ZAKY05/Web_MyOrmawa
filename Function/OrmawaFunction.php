@@ -1,6 +1,8 @@
 <?php
 include '../Config/ConnectDB.php';
 
+
+
 // --- FUNGSI: Menambah Ormawa ---
 if (isset($_POST['action']) && $_POST['action'] === 'add') {
     $nama = trim($_POST['nama_ormawa'] ?? '');
@@ -93,7 +95,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'edit') {
 
     $logo_nama = $logo_lama;
     if (isset($_FILES['logo']) && $_FILES['logo']['error'] == UPLOAD_ERR_OK && $_FILES['logo']['size'] > 0) {
-        $target_dir = "../../uploads/logos/"; // Path relatif dari App/Function/
+        $target_dir = "../uploads/logos/"; // Path relatif dari App/Function/
         $gambar_nama_asli_baru = basename($_FILES["logo"]["name"]);
         $target_file = $target_dir . $gambar_nama_asli_baru;
         $uploadOk = 1;
@@ -176,8 +178,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete') {
         $stmt->close();
 
         // Hapus file logo dari server jika ada
-        if ($logo_nama && file_exists("../../uploads/logos/" . $logo_nama)) { // Path relatif dari App/Function/
-            unlink("../../uploads/logos/" . $logo_nama);
+        if ($logo_nama && file_exists("../uploads/logos/" . $logo_nama)) { // Path relatif dari App/Function/
+            unlink("../uploads/logos/" . $logo_nama);
         }
 
         header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&deleted=ormawa"); // Ganti 'form' menjadi 'ormawa' agar lebih spesifik

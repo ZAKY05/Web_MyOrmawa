@@ -1,6 +1,7 @@
 <?php include('Header.php'); ?>
 <?php include('../../../Config/ConnectDB.php'); ?>
 
+
 <?php
 function getOrmawaData($koneksi) {
     $sql = "SELECT id, nama_ormawa, deskripsi, logo FROM ormawa ORDER BY nama_ormawa ASC";
