@@ -9,6 +9,14 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
         return;
     }
 
+    // --- AMBIL FILTER STATUS DARI REQUEST ---
+    $filter_status = isset($_GET['status']) ? $_GET['status'] : 'all'; // Default 'all'
+    $allowed_filters = ['all', 'approved', 'rejected', 'pending'];
+    if (!in_array($filter_status, $allowed_filters)) {
+        $filter_status = 'all';
+    }
+    // --- SAMPAI SINI ---
+
     // Ambil detail formulir (untuk judul halaman)
     $form_detail_query = "SELECT id, judul FROM form_info WHERE id = ? LIMIT 1";
     $stmt = $koneksi->prepare($form_detail_query);
@@ -27,6 +35,12 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
     }
 
     // Ambil semua submission untuk form_info_id ini
+    // --- PERUBAHAN: Tambahkan kondisi WHERE untuk filter status ---
+    $status_condition = "";
+    if ($filter_status !== 'all') {
+        $status_condition = " AND s.status = ?";
+    }
+
     $all_submissions_query = "
         SELECT 
             s.id as submission_id,
@@ -40,19 +54,30 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
             s.field_value, 
             f.label as field_label,
             f.tipe as field_type,
-            f.id as field_id
+            f.id as field_id,
+            s.status as submission_status
         FROM submit s
         INNER JOIN user u ON s.user_id = u.id
         INNER JOIN form f ON s.form_id = f.id AND s.field_name = f.nama
-        WHERE f.form_info_id = ?
+        WHERE f.form_info_id = ? $status_condition
         ORDER BY s.user_id ASC, f.id ASC
     ";
+    // --- SAMPAI SINI ---
+
+    $params = [$form_info_id];
+    $types = "i";
+
+    if ($filter_status !== 'all') {
+        $params[] = $filter_status;
+        $types .= "s";
+    }
+
     $stmt = $koneksi->prepare($all_submissions_query);
     if (!$stmt) {
         echo "<p class='text-danger'>Error preparing statement for submissions: " . htmlspecialchars($koneksi->error) . "</p>";
         return;
     }
-    $stmt->bind_param("i", $form_info_id);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result_all_submissions = $stmt->get_result();
     $all_submissions_raw = [];
@@ -67,7 +92,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
     foreach ($all_submissions_raw as $sub) {
         $user_id = $sub['user_id'];
 
-        // Simpan info user hanya sekali per user_id
         if (!isset($unique_users[$user_id])) {
             $unique_users[$user_id] = [
                 'nama'      => $sub['user_nama'],
@@ -78,14 +102,25 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
             $organized_submissions[$user_id] = [];
         }
 
-        // Simpan jawaban untuk user dan field tertentu
         $organized_submissions[$user_id][] = [
             'field_name'    => $sub['field_name'],
             'field_label'   => $sub['field_label'],
             'field_value'   => $sub['field_value'],
-            'field_type'    => $sub['field_type']
+            'field_type'    => $sub['field_type'],
+            'status'        => $sub['submission_status']
         ];
     }
+
+    // --- FUNGSI UNTUK MEMBANGUN URL DENGAN FILTER ---
+    // Fungsi ini membangun kembali URL saat ini dengan parameter status yang baru
+    // Ini penting agar filter bekerja tanpa mengacaukan parameter lain
+    function buildFilterUrl($new_status) {
+        $current_params = $_GET; // Ambil semua parameter GET saat ini
+        $current_params['status'] = $new_status; // Ganti atau tambahkan parameter status
+        $current_params = array_filter($current_params, function($v) { return $v !== ''; }); // Hapus nilai kosong
+        return '?' . http_build_query($current_params);
+    }
+    // --- SAMPAI SINI ---
 
     // Render HTML Tabel dan Modal
     ?>
@@ -94,18 +129,40 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-users"></i> Submissions: <?= htmlspecialchars($form_detail['judul']) ?>
             </h6>
-            <a href="?page=oprec&form_id=<?= $form_info_id ?>" class="btn btn-info btn-sm" title="Kembali ke Edit Form">
-                <i class="fas fa-edit"></i> Edit Form
-            </a>
+            <div class="d-flex">
+                <!-- Tombol Kembali -->
+                <!-- CATATAN: Ganti 'page=oprec' dengan parameter yang sesuai untuk kembali ke edit form Anda -->
+                <a href="?page=oprec&form_id=<?= $form_info_id ?>" class="btn btn-info btn-sm mr-2" title="Kembali ke Edit Form">
+                    <i class="fas fa-edit"></i> Edit Form
+                </a>
+                <!-- Filter Status -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="<?= buildFilterUrl('all') ?>" 
+                       class="btn <?= $filter_status === 'all' ? 'btn-primary' : 'btn-outline-secondary' ?>">Semua</a>
+                    <a href="<?= buildFilterUrl('pending') ?>" 
+                       class="btn <?= $filter_status === 'pending' ? 'btn-warning' : 'btn-outline-secondary' ?>">Pending</a>
+                    <a href="<?= buildFilterUrl('approved') ?>" 
+                       class="btn <?= $filter_status === 'approved' ? 'btn-success' : 'btn-outline-secondary' ?>">Approved</a>
+                    <a href="<?= buildFilterUrl('rejected') ?>" 
+                       class="btn <?= $filter_status === 'rejected' ? 'btn-danger' : 'btn-outline-secondary' ?>">Rejected</a>
+                </div>
+            </div>
         </div>
         <div class="card-body">
             <?php if (empty($unique_users)): ?>
                 <div class="text-center py-5">
                     <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
-                    <p class="text-gray-500">Belum ada pengguna yang mengisi formulir ini.</p>
-                    <a href="?page=oprec&form_id=<?= $form_info_id ?>" class="btn btn-info btn-sm">
-                        <i class="fas fa-edit"></i> Edit Form
-                    </a>
+                    <?php if ($filter_status !== 'all'): ?>
+                        <p class="text-gray-500">Tidak ada pengguna dengan status <strong><?= ucfirst($filter_status) ?></strong> untuk formulir ini.</p>
+                        <a href="<?= buildFilterUrl('all') ?>" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-list"></i> Lihat Semua
+                        </a>
+                    <?php else: ?>
+                        <p class="text-gray-500">Belum ada pengguna yang mengisi formulir ini.</p>
+                        <a href="?page=oprec&form_id=<?= $form_info_id ?>" class="btn btn-info btn-sm">
+                            <i class="fas fa-edit"></i> Edit Form
+                        </a>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <div class="table-responsive">
@@ -116,7 +173,8 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                 <th width="20%">Pengguna</th>
                                 <th width="15%">NIM</th>
                                 <th width="15%">Username</th>
-                                <th width="25%">Email</th>
+                                <th width="20%">Email</th>
+                                <th width="10%" class="text-center">Status</th>
                                 <th width="10%" class="text-center">Jawaban</th>
                                 <th width="10%" class="text-center">Aksi</th>
                             </tr>
@@ -128,9 +186,11 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                 $submissions = $organized_submissions[$user_id] ?? [];
                                 $modalId = 'viewSubmissionModal_' . $user_id;
                                 $total_answers = count($submissions);
-                                // --- BUAT ID UNTUK MODAL KONFIRMASI HAPUS ---
                                 $deleteModalId = 'deleteSubmissionModal_' . $user_id . '_' . $form_info_id;
-                                // --- SAMPAI SINI ---
+                                $approveModalId = 'approveSubmissionModal_' . $user_id . '_' . $form_info_id;
+                                $rejectModalId = 'rejectSubmissionModal_' . $user_id . '_' . $form_info_id;
+                                
+                                $current_status = $submissions[0]['status'] ?? 'pending';
                             ?>
                                 <tr>
                                     <td class="text-center"><?= $no++ ?></td>
@@ -139,16 +199,50 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                     <td><?= htmlspecialchars($user_info['username']) ?></td>
                                     <td><?= htmlspecialchars($user_info['email']) ?></td>
                                     <td class="text-center">
+                                        <?php if ($current_status === 'approved'): ?>
+                                            <span class="badge badge-success">Approved</span>
+                                        <?php elseif ($current_status === 'rejected'): ?>
+                                            <span class="badge badge-danger">Rejected</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-warning">Pending</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
                                         <span class="badge badge-primary badge-pill" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">
                                             <?= $total_answers ?> Jawaban
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <!-- Tombol Lihat Detail -->
                                         <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#<?= $modalId ?>" title="Lihat Detail Submission">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <!-- Tombol Hapus - Perubahan disini -->
+                                        <?php if ($current_status === 'pending'): ?>
+                                            <button type="button" class="btn btn-success btn-sm ml-1" 
+                                                    data-toggle="modal"
+                                                    data-target="#<?= $approveModalId ?>"
+                                                    title="Approve Submission">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-warning btn-sm ml-1" 
+                                                    data-toggle="modal"
+                                                    data-target="#<?= $rejectModalId ?>"
+                                                    title="Reject Submission">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn btn-info btn-sm ml-1" 
+                                                    data-toggle="modal"
+                                                    data-target="#<?= $approveModalId ?>"
+                                                    title="Approve Submission">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm ml-1" 
+                                                    data-toggle="modal"
+                                                    data-target="#<?= $rejectModalId ?>"
+                                                    title="Reject Submission">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="button" class="btn btn-danger btn-sm ml-1" 
                                                 data-toggle="modal"
                                                 data-target="#<?= $deleteModalId ?>"
@@ -158,7 +252,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                     </td>
                                 </tr>
 
-                                <!-- --- MODAL KONFIRMASI HAPUS (Dipindahkan ke dalam loop) --- -->
                                 <div class="modal fade" id="<?= $deleteModalId ?>" tabindex="-1" role="dialog" aria-labelledby="deleteSubmissionModalLabel_<?= $user_id ?>_<?= $form_info_id ?>" aria-hidden="true">
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content">
@@ -175,7 +268,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                             </div>
                                             <div class="modal-footer">
                                                 <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
-                                                <!-- Tombol Hapus Konfirmasi -->
                                                 <a class="btn btn-danger" href="../../../Function/SubmissionFunction.php?action=delete_user_submissions&user_id=<?= $user_id ?>&form_info_id=<?= $form_info_id ?>">
                                                     <i class="fas fa-trash"></i> Hapus
                                                 </a>
@@ -183,7 +275,54 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                         </div>
                                     </div>
                                 </div>
-                                <!-- --- SAMPAI SINI --- -->
+
+                                <div class="modal fade" id="<?= $approveModalId ?>" tabindex="-1" role="dialog" aria-labelledby="approveSubmissionModalLabel_<?= $user_id ?>_<?= $form_info_id ?>" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="approveSubmissionModalLabel_<?= $user_id ?>_<?= $form_info_id ?>">Konfirmasi Approve Submission</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                Apakah Anda yakin ingin <strong>menyetujui</strong> submission dari <strong>"<?= htmlspecialchars($user_info['nama']) ?>"</strong>?
+                                                <br><br>
+                                                <span class="text-success">Status akan diubah menjadi 'Approved'.</span>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
+                                                <a class="btn btn-success" href="../../../Function/SubmissionFunction.php?action=approve_user_submissions&user_id=<?= $user_id ?>&form_info_id=<?= $form_info_id ?>">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="modal fade" id="<?= $rejectModalId ?>" tabindex="-1" role="dialog" aria-labelledby="rejectSubmissionModalLabel_<?= $user_id ?>_<?= $form_info_id ?>" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="rejectSubmissionModalLabel_<?= $user_id ?>_<?= $form_info_id ?>">Konfirmasi Reject Submission</h5>
+                                                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                Apakah Anda yakin ingin <strong>menolak</strong> submission dari <strong>"<?= htmlspecialchars($user_info['nama']) ?>"</strong>?
+                                                <br><br>
+                                                <span class="text-danger">Status akan diubah menjadi 'Rejected'.</span>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
+                                                <a class="btn btn-warning" href="../../../Function/SubmissionFunction.php?action=reject_user_submissions&user_id=<?= $user_id ?>&form_info_id=<?= $form_info_id ?>">
+                                                    <i class="fas fa-times"></i> Reject
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                             <?php endforeach; ?>
                         </tbody>
@@ -191,13 +330,12 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                 </div>
 
                 <?php
-                // Modal untuk setiap user - letakkan di luar table
                 foreach ($unique_users as $user_id => $user_info):
                     $submissions = $organized_submissions[$user_id] ?? [];
                     $modalId = 'viewSubmissionModal_' . $user_id;
                     $total_answers = count($submissions);
+                    $current_status = $submissions[0]['status'] ?? 'pending';
                 ?>
-                    <!-- Modal Detail Submission -->
                     <div class="modal fade" id="<?= $modalId ?>" tabindex="-1" role="dialog" aria-labelledby="modalLabel_<?= $user_id ?>" aria-hidden="true">
                         <div class="modal-dialog modal-xl" role="document">
                             <div class="modal-content">
@@ -210,7 +348,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                     </button>
                                 </div>
                                 <div class="modal-body">
-                                    <!-- Info Pengguna -->
                                     <div class="card border-left-primary shadow mb-3">
                                         <div class="card-body py-3">
                                             <div class="row">
@@ -219,10 +356,21 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                                 <div class="col-md-3"><strong>Username:</strong> <?= htmlspecialchars($user_info['username']) ?></div>
                                                 <div class="col-md-3"><strong>Email:</strong> <?= htmlspecialchars($user_info['email']) ?></div>
                                             </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-12">
+                                                    <strong>Status:</strong>
+                                                    <?php if ($current_status === 'approved'): ?>
+                                                        <span class="badge badge-success">Approved</span>
+                                                    <?php elseif ($current_status === 'rejected'): ?>
+                                                        <span class="badge badge-danger">Rejected</span>
+                                                    <?php else: ?>
+                                                        <span class="badge badge-warning">Pending</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <!-- Tabel Jawaban -->
                                     <h6 class="font-weight-bold text-primary mb-3">
                                         <i class="fas fa-clipboard-list"></i> Jawaban Formulir 
                                         <span class="badge badge-info ml-2"><?= $total_answers ?> Jawaban</span>
@@ -256,7 +404,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                                                 $value = $submission['field_value'];
                                                                 $field_type = $submission['field_type'] ?? '';
                                                                 
-                                                                // Handle file uploads
                                                                 if ($field_type === 'file' || preg_match('/\.(jpg|jpeg|png|gif|pdf|doc|docx|xls|xlsx|txt|zip|rar)$/i', $value)) {
                                                                     $file_path = "../../../uploads/submissions/" . basename($value);
                                                                     
@@ -264,7 +411,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                                                         $file_ext = strtolower(pathinfo($value, PATHINFO_EXTENSION));
                                                                         $file_name = basename($value);
                                                                         
-                                                                        // Preview untuk gambar
                                                                         if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif'])) {
                                                                             echo '<div class="text-center mb-2">';
                                                                             echo '<a href="' . htmlspecialchars($file_path) . '" target="_blank">';
@@ -273,7 +419,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                                                             echo '<a href="' . htmlspecialchars($file_path) . '" class="btn btn-sm btn-primary" download>';
                                                                             echo '<i class="fas fa-download"></i> Download Image</a>';
                                                                         } else {
-                                                                            // File lainnya
                                                                             $file_icons = [
                                                                                 'pdf' => 'fa-file-pdf text-danger',
                                                                                 'doc' => 'fa-file-word text-primary',
@@ -295,7 +440,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                                                         echo '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> File tidak ditemukan</span>';
                                                                     }
                                                                 } else {
-                                                                    // URL atau text biasa
                                                                     if (filter_var($value, FILTER_VALIDATE_URL)) {
                                                                         echo '<a href="' . htmlspecialchars($value) . '" target="_blank">';
                                                                         echo '<i class="fas fa-link"></i> ' . htmlspecialchars($value) . '</a>';
@@ -326,9 +470,8 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
         </div>
     </div>
 
-
     <script>
-      
+        // Initialize DataTable
         <?php if (!empty($unique_users)): ?>
         $(document).ready(function() {
             $('#submissionsTable').DataTable({
@@ -338,7 +481,7 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                 "pageLength": 10,
                 "order": [[0, "asc"]],
                 "columnDefs": [
-                    { "orderable": false, "targets": [5, 6] }
+                    { "orderable": false, "targets": [5, 6, 7] }
                 ]
             });
         });
