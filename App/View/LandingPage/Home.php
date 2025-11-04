@@ -22,7 +22,8 @@ function getOrmawaData($koneksi) {
 // Fungsi untuk mengambil data kegiatan/event terbaru
 function getKegiatanTerbaru($koneksi, $jumlah = 6) {
     // Query untuk mengambil event terbaru, misalnya berdasarkan tgl_mulai DESC
-    $sql = "SELECT e.id, e.nama_event, e.deskripsi, e.tgl_mulai, e.tgl_selesai, e.lokasi, o.nama_ormawa
+    // Tambahkan 'e.gambar' ke dalam SELECT agar datanya bisa digunakan
+    $sql = "SELECT e.id, e.nama_event, e.deskripsi, e.tgl_mulai, e.tgl_selesai, e.lokasi, e.gambar, o.nama_ormawa
             FROM event e
             JOIN ormawa o ON e.ormawa_id = o.id
             ORDER BY e.tgl_mulai DESC
@@ -62,9 +63,9 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ormawa Kampus - Organisasi Mahasiswa</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css  " rel="stylesheet">
     <link rel="stylesheet" href="../../../Asset/Css/LandingPage.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css  ">
     <style>
         /* Gaya untuk slider Ormawa */
         .structure-section {
@@ -290,7 +291,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
             </div>
         </div>
 
-        <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1920');">
+        <div class="slide" style="background-image: url('  https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1920');">
             <div class="slide-overlay">
                 <div class="container">
                     <div class="slide-content">
@@ -303,7 +304,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
             </div>
         </div>
 
-        <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=1920');">
+        <div class="slide" style="background-image: url('  https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=1920');">
             <div class="slide-overlay">
                 <div class="container">
                     <div class="slide-content">
@@ -343,8 +344,16 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
                     <?php foreach ($kegiatan_list as $kegiatan): ?>
                         <div class="col-lg-4 col-md-6">
                             <div class="activity-card">
-                                <!-- Gunakan placeholder karena tabel event tidak memiliki kolom gambar -->
-                                <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800');">
+                                <?php
+                                // Tentukan path gambar berdasarkan data dari database
+                                $gambar_nama_file = $kegiatan['gambar'];
+                                // Sesuaikan path ini dengan struktur folder upload Anda
+                                $gambar_path = '../../../Uploads/event/' . $gambar_nama_file;
+                                // Gunakan placeholder jika gambar tidak ditemukan atau kosong
+                                $gambar_url = ($gambar_nama_file && file_exists(__DIR__ . '/../../../Uploads/event/' . $gambar_nama_file)) ? $gambar_path : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+                                ?>
+                                <!-- Gunakan $gambar_url di sini -->
+                                <div class="activity-img" style="background-image: url('<?php echo htmlspecialchars($gambar_url); ?>');">
                                     <div class="activity-date">
                                         <?php
                                         $tgl_mulai_obj = new DateTime($kegiatan['tgl_mulai']);
@@ -392,7 +401,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
                                             <?php
                                             $logo_nama_file = $ormawa['logo'];
                                             $logo_path = $logo_dir . $logo_nama_file;
-                                            $logo_url = ($logo_nama_file && file_exists(__DIR__ . '/../../../uploads/logos/' . $logo_nama_file)) ? '../../../uploads/logos/' . $logo_nama_file : 'https://via.placeholder.com/150/667eea/ffffff?text=' . substr($ormawa['nama_ormawa'], 0, 2);
+                                            $logo_url = ($logo_nama_file && file_exists(__DIR__ . '/../../../uploads/logos/' . $logo_nama_file)) ? '../../../uploads/logos/' . $logo_nama_file : '  https://via.placeholder.com/150/667eea/ffffff?text=' . substr($ormawa['nama_ormawa'], 0, 2);
                                             ?>
                                             <img src="<?php echo $logo_url; ?>" alt="Logo <?php echo htmlspecialchars($ormawa['nama_ormawa']); ?>">
                                         </div>
