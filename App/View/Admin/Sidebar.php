@@ -12,11 +12,11 @@
     <hr class="sidebar-divider my-0">
 
     <!-- Nav Item - Dashboard -->
-    <li class="nav-item active">
+    <!-- <li class="nav-item active">
         <a class="nav-link" href="Index.php?page=dashboard">
             <i class="fas fa-fw fa-tachometer-alt"></i>
             <span>Dashboard</span></a>
-    </li>
+    </li> -->
 
     <!-- Divider -->
     <hr class="sidebar-divider">
@@ -26,16 +26,15 @@
         Data Master
     </div>
 
-    <!-- Nav Item - Pages Collapse Menu -->
     <li class="nav-item">
-        <a class="nav-link" href="Index.php ?page=ormawa">
-            <i class="fa-solid fa-users"></i>
-            <span>Data Ormawa</span></a>
+        <a class="nav-link" href="Index.php ?page=anggota">
+        <i class="fa-solid fa-users"></i>
+            <span>Anggota</span></a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=account">
             <i class="fa-solid fa-id-card"></i>
-            <span>Account Ormawa</span></a>
+            <span>Manajemen Account</span></a>
     </li>
 
     <li class="nav-item">
@@ -79,11 +78,6 @@
             <i class="fa-solid fa-trophy"></i>
             <span>Kompetisi</span></a>
     </li>
-    <li class="nav-item">
-        <a class="nav-link" href="Index.php ?page=kompetisi">
-        <i class="fas fa-user-graduate"></i>
-            <span>Beasiswa</span></a>
-    </li>
 
     <!-- Nav Item - Tables -->
     <li class="nav-item">
@@ -102,5 +96,5 @@
 </ul>
 
 <?php
-include('../SuperAdmin/Footer.php');
+include('Footer.php');
 ?>

@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+<?php
+session_start();
+?>
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -31,29 +35,14 @@
                     <p>Please login to continue to MyOrmawa</p>
                 </div>
 
-                <!-- Tampilkan error jika ada -->
-                <?php if (isset($_SESSION['login_error'])): ?>
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <?php 
-                            echo $_SESSION['login_error'];
-                            unset($_SESSION['login_error']);
-                        ?>
-                    </div>
-                <?php endif; ?>
+
 
                 <form action="../../../Function/LoginFunction.php" method="POST" id="loginForm">
                     <div class="form-group">
                         <label for="email">Email Address</label>
                         <div class="input-wrapper">
                             <i class="fas fa-envelope input-icon"></i>
-                            <input type="email" 
-                                   class="form-control" 
-                                   id="email"
-                                   name="email" 
-                                   placeholder="Enter your email" 
-                                   value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
-                                   required>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
                         </div>
                     </div>
 
@@ -61,12 +50,7 @@
                         <label for="password">Password</label>
                         <div class="input-wrapper">
                             <i class="fas fa-lock input-icon"></i>
-                            <input type="password" 
-                                   class="form-control" 
-                                   id="password"
-                                   name="password" 
-                                   placeholder="Enter your password" 
-                                   required>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
                         </div>
                     </div>
 
@@ -91,6 +75,29 @@
             </div>
         </div>
     </div>
+    <!-- Modal Notifikasi -->
+    <div class="modal fade" id="loginErrorModal" tabindex="-1" aria-labelledby="loginErrorLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger shadow-lg">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="loginErrorLabel">
+                        <i class="fas fa-exclamation-triangle"></i> Login Gagal
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <?php if (isset($_SESSION['login_error'])) : ?>
+                        <p class="fw-semibold"><?php echo $_SESSION['login_error']; ?></p>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 
     <!-- JS -->
     <script src="../../Template/vendor/jquery/jquery.min.js"></script>
@@ -99,6 +106,13 @@
     <script src="../../Template/js/sb-admin-2.min.js"></script>
 
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            <?php if (isset($_SESSION['login_error'])) : ?>
+                const modal = new bootstrap.Modal(document.getElementById('loginErrorModal'));
+                modal.show();
+                <?php unset($_SESSION['login_error']); ?>
+            <?php endif; ?>
+        });
         // Form submission animation
         document.getElementById('loginForm').addEventListener('submit', function() {
             const btn = document.getElementById('loginBtn');
@@ -119,4 +133,5 @@
         });
     </script>
 </body>
+
 </html>
