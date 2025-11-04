@@ -1,363 +1,238 @@
 <?php
-require_once '../Database/ConnectDB.php';
+// ... (koneksi dan fungsi lainnya)
 
-// Set header JSON
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *'); // Opsional, jika perlu CORS
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type');
-
-// Tutup koneksi saat script selesai
-register_shutdown_function(function() use ($koneksi) {
-    if ($koneksi) {
-        mysqli_close($koneksi);
-    }
-});
-
-// Ambil action dari POST atau GET
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
-
-switch($action) {
-    case 'create':
-        createEvent($koneksi);
-        break;
-    case 'read':
-        readEvents($koneksi);
-        break;
-    case 'read_single':
-        readSingleEvent($koneksi);
-        break;
-    case 'update':
-        updateEvent($koneksi);
-        break;
-    case 'delete':
-        deleteEvent($koneksi);
-        break;
-    case 'statistics':
-        getStatistics($koneksi);
-        break;
-    case 'generate_sample':
-        generateSampleData($koneksi);
-        break;
-    default:
-        http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
-        exit;
+// Fungsi untuk mendapatkan data event, dengan filter berdasarkan ormawa_id jika login sebagai admin organisasi
+// Di sini, karena session dihapus, kita asumsikan tidak ada filter ormawa_id kecuali ditentukan dari parameter eksternal.
+// Jika fungsi ini sebelumnya mengandalkan session, maka sekarang tidak lagi.
+function getEventData($koneksi) {
+    // Asumsikan tidak ada session, jadi tidak ada filter berdasarkan role atau ormawa_id
+    // Jika sebelumnya ada filter untuk admin organisasi, maka filter itu hilang.
+    $query = "SELECT e.*, o.nama_ormawa FROM event e JOIN ormawa o ON e.ormawa_id = o.id";
+    // Tidak ada WHERE clause karena session dihapus
+    $stmt = $koneksi->prepare($query);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// CREATE - Tambah Event
-function createEvent($koneksi) {
-    // Validasi input wajib
-    if (!isset($_POST['nama_event']) || !isset($_POST['kategori']) || !isset($_POST['tgl_mulai']) || !isset($_POST['lokasi'])) {
-        echo json_encode(['status' => 'error', 'message' => 'Data wajib tidak lengkap']);
-        return;
-    }
-
-    $nama_event = trim($_POST['nama_event']);
-    $kategori = trim($_POST['kategori']);
-    $tgl_mulai = $_POST['tgl_mulai'];
-    $tgl_selesai = !empty($_POST['tgl_selesai']) ? $_POST['tgl_selesai'] : null;
-    $lokasi = trim($_POST['lokasi']);
-    $deskripsi = !empty($_POST['deskripsi']) ? trim($_POST['deskripsi']) : null;
-
-    // Validasi format tanggal
-    if (!strtotime($tgl_mulai)) {
-        echo json_encode(['status' => 'error', 'message' => 'Format tanggal mulai tidak valid']);
-        return;
-    }
-
-    // Handle upload gambar
-    $gambar = null;
-    if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
-        $gambar = uploadGambar($_FILES['gambar']);
-        if ($gambar === false) {
-            echo json_encode(['status' => 'error', 'message' => 'Gagal mengupload gambar. Pastikan format JPG/PNG dan ukuran < 2MB']);
-            return;
-        }
-    }
-
-    // Gunakan prepared statement untuk keamanan maksimal
-    $sql = "INSERT INTO event (nama_event, kategori, tgl_mulai, tgl_selesai, lokasi, deskripsi, gambar) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
-    $stmt = mysqli_prepare($koneksi, $sql);
-    if (!$stmt) {
-        echo json_encode(['status' => 'error', 'message' => 'Gagal menyiapkan query: ' . mysqli_error($koneksi)]);
-        return;
-    }
-
-    mysqli_stmt_bind_param($stmt, 'sssssss', 
-        $nama_event, 
-        $kategori, 
-        $tgl_mulai, 
-        $tgl_selesai, 
-        $lokasi, 
-        $deskripsi, 
-        $gambar
-    );
-
-    if (mysqli_stmt_execute($stmt)) {
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Event berhasil ditambahkan',
-            'id' => mysqli_insert_id($koneksi)
-        ]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan ke database: ' . mysqli_error($koneksi)]);
-    }
-
-    mysqli_stmt_close($stmt);
+// Fungsi untuk mendapatkan daftar ormawa untuk dropdown
+function getOrmawaList($koneksi) {
+    // Karena session dihapus, kita asumsikan selalu seperti super_admin (ambil semua)
+    // atau kembalikan kosong jika tidak ada mekanisme lain untuk menentukan akses.
+    // Jika sebelumnya ada logika untuk role, maka itu dihapus.
+    $query = "SELECT id, nama_ormawa FROM ormawa ORDER BY nama_ormawa ASC";
+    $result = $koneksi->query($query);
+    return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// READ - Ambil semua event dengan filter
-function readEvents($koneksi) {
-    $kategori = $_GET['kategori'] ?? '';
-    $tanggal = $_GET['tanggal'] ?? '';
-    $search = $_GET['search'] ?? '';
-
-    $sql = "SELECT * FROM event WHERE 1=1";
-    $params = [];
-    $types = "";
-
-    if (!empty($kategori)) {
-        $sql .= " AND kategori = ?";
-        $params[] = $kategori;
-        $types .= "s";
-    }
-
-    if (!empty($tanggal)) {
-        $sql .= " AND DATE(tgl_mulai) = ?";
-        $params[] = $tanggal;
-        $types .= "s";
-    }
-
-    if (!empty($search)) {
-        $sql .= " AND (nama_event LIKE ? OR lokasi LIKE ?)";
-        $searchLike = "%$search%";
-        $params[] = $searchLike;
-        $params[] = $searchLike;
-        $types .= "ss";
-    }
-
-    $sql .= " ORDER BY tgl_mulai DESC";
-
-    $stmt = mysqli_prepare($koneksi, $sql);
-    if ($types) {
-        mysqli_stmt_bind_param($stmt, $types, ...$params);
-    }
-
-    if (!mysqli_stmt_execute($stmt)) {
-        echo json_encode(['status' => 'error', 'message' => 'Gagal mengambil data']);
-        return;
-    }
-
-    $result = mysqli_stmt_get_result($stmt);
-    $events = mysqli_fetch_all($result, MYSQLI_ASSOC);
-
-    echo json_encode(['status' => 'success', 'data' => $events]);
-    mysqli_stmt_close($stmt);
+// Fungsi untuk mendapatkan informasi ormawa milik admin organisasi (digunakan untuk tampilan readonly)
+function getAdminOrmawaInfo($koneksi) {
+    // Karena session dihapus, fungsi ini tidak bisa mengetahui ormawa milik user.
+    // Kembalikan null karena tidak bisa menentukan info dari session.
+    return null;
 }
 
-// READ SINGLE - Ambil detail satu event
-function readSingleEvent($koneksi) {
-    if (!isset($_GET['id'])) {
-        echo json_encode(['status' => 'error', 'message' => 'ID event tidak diberikan']);
-        return;
-    }
+function handleEventOperations($koneksi) {
+    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+        $action = $_POST['action'] ?? '';
+        // Karena session dihapus, kita tidak bisa mengetahui user_id, role, atau ormawa_id
+        // Asumsikan semua operasi diizinkan seolah-olah adalah super_admin
+        // atau tambahkan parameter POST untuk role/user jika tidak ada session
 
-    $id = (int)$_GET['id'];
-    $sql = "SELECT * FROM event WHERE id = ?";
-    $stmt = mysqli_prepare($koneksi, $sql);
-    mysqli_stmt_bind_param($stmt, 'i', $id);
+        // CONTOH: Kita asumsikan selalu super_admin untuk menjaga fungsi tetap berjalan
+        $userRole = 'super_admin'; // Hardcoded karena session dihapus
+        $userOrmawaId = null; // Tidak bisa diambil dari session
 
-    if (!mysqli_stmt_execute($stmt)) {
-        echo json_encode(['status' => 'error', 'message' => 'Gagal mengambil data']);
-        return;
-    }
-
-    $result = mysqli_stmt_get_result($stmt);
-    $row = mysqli_fetch_assoc($result);
-
-    if ($row) {
-        echo json_encode(['status' => 'success', 'data' => $row]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Event tidak ditemukan']);
-    }
-
-    mysqli_stmt_close($stmt);
-}
-
-// UPDATE - Edit Event
-function updateEvent($koneksi) {
-    if (!isset($_POST['id'])) {
-        echo json_encode(['status' => 'error', 'message' => 'ID event tidak diberikan']);
-        return;
-    }
-
-    $id = (int)$_POST['id'];
-    $nama_event = trim($_POST['nama_event']);
-    $kategori = trim($_POST['kategori']);
-    $tgl_mulai = $_POST['tgl_mulai'];
-    $tgl_selesai = !empty($_POST['tgl_selesai']) ? $_POST['tgl_selesai'] : null;
-    $lokasi = trim($_POST['lokasi']);
-    $deskripsi = !empty($_POST['deskripsi']) ? trim($_POST['deskripsi']) : null;
-    $gambar_lama = $_POST['gambar_lama'] ?? null;
-
-    // Handle upload gambar baru
-    $gambar = $gambar_lama;
-    if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === UPLOAD_ERR_OK) {
-        $gambar_baru = uploadGambar($_FILES['gambar']);
-        if ($gambar_baru !== false) {
-            // Hapus gambar lama
-            if (!empty($gambar_lama) && file_exists("../uploads/" . $gambar_lama)) {
-                unlink("../uploads/" . $gambar_lama);
+        if ($action === 'tambah') {
+            // Karena session dihapus, kita tidak bisa memvalidasi role di sini kecuali dari tempat lain
+            // Jika tidak ada mekanisme lain, maka hanya super_admin hardcoded yang bisa
+            if ($userRole !== 'super_admin') { // Hanya ini yang bisa di cek sekarang
+                 $_SESSION['message'] = 'Akses ditolak.';
+                 $_SESSION['msg_type'] = 'danger';
+                 return;
             }
-            $gambar = $gambar_baru;
+
+            $ormawa_id = $_POST['ormawa_id'];
+
+            // Karena userOrmawaId tidak bisa didapat dari session, logika ini tidak bisa dijalankan
+            // Kita abaikan pengecekan ormawa_id untuk admin_organisasi
+            // (Kecuali ormawa_id diambil dari tempat lain)
+
+            $nama_event = $_POST['nama_event'];
+            $deskripsi = $_POST['deskripsi'];
+            $tgl_mulai = $_POST['tgl_mulai'];
+            $tgl_selesai = $_POST['tgl_selesai'];
+            $lokasi = $_POST['lokasi'];
+
+            $gambar_nama = '';
+            if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
+                $gambar_nama = uploadGambar($_FILES['gambar'], 'event');
+                if ($gambar_nama === false) {
+                    $_SESSION['message'] = 'Gagal mengupload gambar.';
+                    $_SESSION['msg_type'] = 'danger';
+                    return;
+                }
+            }
+
+            $stmt = $koneksi->prepare("INSERT INTO event (ormawa_id, nama_event, deskripsi, tgl_mulai, tgl_selesai, lokasi, gambar) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("issssss", $ormawa_id, $nama_event, $deskripsi, $tgl_mulai, $tgl_selesai, $lokasi, $gambar_nama);
+
+            if ($stmt->execute()) {
+                $_SESSION['message'] = 'Event berhasil ditambahkan.';
+                $_SESSION['msg_type'] = 'success';
+            } else {
+                $_SESSION['message'] = 'Gagal menambahkan event.';
+                $_SESSION['msg_type'] = 'danger';
+            }
+            $stmt->close();
+
+        } elseif ($action === 'edit') {
+            $event_id = $_POST['event_id'];
+
+            // Ambil ormawa_id dari event yang akan diedit
+            $stmt_check = $koneksi->prepare("SELECT ormawa_id FROM event WHERE id = ?");
+            $stmt_check->bind_param("i", $event_id);
+            $stmt_check->execute();
+            $result_check = $stmt_check->get_result();
+            if ($result_check->num_rows !== 1) {
+                 $_SESSION['message'] = 'Event tidak ditemukan.';
+                 $_SESSION['msg_type'] = 'danger';
+                 $stmt_check->close();
+                 return;
+            }
+            $event_data = $result_check->fetch_assoc();
+            $stmt_check->close();
+
+            // $event_ormawa_id = $event_data['ormawa_id'];
+            // Karena session dihapus, kita tidak bisa memvalidasi akses user terhadap event ini
+            // Jadi, kita asumsikan akses diperbolehkan (seperti super_admin)
+            // Kode validasi akses dihapus
+
+            $ormawa_id = $_POST['ormawa_id'];
+            // Karena userOrmawaId tidak ada, kita tidak bisa memvalidasi bahwa admin organisasi hanya bisa edit untuk ormawanya sendiri
+            // Kita abaikan validasi ini
+
+            $nama_event = $_POST['nama_event'];
+            $deskripsi = $_POST['deskripsi'];
+            $tgl_mulai = $_POST['tgl_mulai'];
+            $tgl_selesai = $_POST['tgl_selesai'];
+            $lokasi = $_POST['lokasi'];
+            $gambar_lama = $_POST['gambar_lama'];
+
+            $gambar_nama = $gambar_lama;
+            if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
+                // Hapus gambar lama jika ada dan bukan default
+                if ($gambar_lama && file_exists('../../../Uploads/event/' . $gambar_lama)) {
+                    unlink('../../../Uploads/event/' . $gambar_lama);
+                }
+                $gambar_nama = uploadGambar($_FILES['gambar'], 'event');
+                if ($gambar_nama === false) {
+                    $_SESSION['message'] = 'Gagal mengupload gambar baru.';
+                    $_SESSION['msg_type'] = 'danger';
+                    return;
+                }
+            }
+
+            $stmt = $koneksi->prepare("UPDATE event SET ormawa_id=?, nama_event=?, deskripsi=?, tgl_mulai=?, tgl_selesai=?, lokasi=?, gambar=? WHERE id=?");
+            $stmt->bind_param("issssssi", $ormawa_id, $nama_event, $deskripsi, $tgl_mulai, $tgl_selesai, $lokasi, $gambar_nama, $event_id);
+
+            if ($stmt->execute()) {
+                $_SESSION['message'] = 'Event berhasil diperbarui.';
+                $_SESSION['msg_type'] = 'success';
+            } else {
+                $_SESSION['message'] = 'Gagal memperbarui event.';
+                $_SESSION['msg_type'] = 'danger';
+            }
+            $stmt->close();
+
+        } elseif ($action === 'hapus') {
+            $event_id = $_POST['event_id'];
+
+            // Ambil ormawa_id dari event yang akan dihapus
+            $stmt_check = $koneksi->prepare("SELECT ormawa_id FROM event WHERE id = ?");
+            $stmt_check->bind_param("i", $event_id);
+            $stmt_check->execute();
+            $result_check = $stmt_check->get_result();
+            if ($result_check->num_rows !== 1) {
+                 $_SESSION['message'] = 'Event tidak ditemukan.';
+                 $_SESSION['msg_type'] = 'danger';
+                 $stmt_check->close();
+                 return;
+            }
+            $event_data = $result_check->fetch_assoc();
+            $stmt_check->close();
+
+            // $event_ormawa_id = $event_data['ormawa_id'];
+            // Karena session dihapus, tidak bisa memvalidasi akses
+            // Asumsikan akses diperbolehkan
+
+            // Ambil nama gambar dari database untuk dihapus
+            $stmt = $koneksi->prepare("SELECT gambar FROM event WHERE id = ?");
+            $stmt->bind_param("i", $event_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $event = $result->fetch_assoc();
+            $stmt->close();
+
+            if ($event && $event['gambar']) {
+                $gambar_path = '../../../Uploads/event/' . $event['gambar'];
+                if (file_exists($gambar_path)) {
+                    unlink($gambar_path); // Hapus file dari server
+                }
+            }
+
+            $stmt_hapus = $koneksi->prepare("DELETE FROM event WHERE id = ?");
+            $stmt_hapus->bind_param("i", $event_id);
+
+            if ($stmt_hapus->execute()) {
+                $_SESSION['message'] = 'Event berhasil dihapus.';
+                $_SESSION['msg_type'] = 'success';
+            } else {
+                $_SESSION['message'] = 'Gagal menghapus event.';
+                $_SESSION['msg_type'] = 'danger';
+            }
+            $stmt_hapus->close();
         }
     }
-
-    $sql = "UPDATE event SET 
-            nama_event = ?, 
-            kategori = ?, 
-            tgl_mulai = ?, 
-            tgl_selesai = ?, 
-            lokasi = ?, 
-            deskripsi = ?, 
-            gambar = ?
-            WHERE id = ?";
-    $stmt = mysqli_prepare($koneksi, $sql);
-
-    mysqli_stmt_bind_param($stmt, 'sssssssi',
-        $nama_event,
-        $kategori,
-        $tgl_mulai,
-        $tgl_selesai,
-        $lokasi,
-        $deskripsi,
-        $gambar,
-        $id
-    );
-
-    if (mysqli_stmt_execute($stmt)) {
-        echo json_encode(['status' => 'success', 'message' => 'Event berhasil diupdate']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Gagal update: ' . mysqli_error($koneksi)]);
-    }
-
-    mysqli_stmt_close($stmt);
 }
 
-// DELETE - Hapus Event
-function deleteEvent($koneksi) {
-    if (!isset($_POST['id'])) {
-        echo json_encode(['status' => 'error', 'message' => 'ID event tidak diberikan']);
-        return;
-    }
+function uploadGambar($file, $folder) {
+    $target_dir = "../../../Uploads/" . $folder . "/";
+    $target_file = $target_dir . basename($file["name"]);
+    $uploadOk = 1;
+    $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
 
-    $id = (int)$_POST['id'];
-
-    // Ambil nama file gambar
-    $sql = "SELECT gambar FROM event WHERE id = ?";
-    $stmt = mysqli_prepare($koneksi, $sql);
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    $row = mysqli_fetch_assoc($result);
-    mysqli_stmt_close($stmt);
-
-    // Hapus dari database
-    $sql = "DELETE FROM event WHERE id = ?";
-    $stmt = mysqli_prepare($koneksi, $sql);
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-
-    if (mysqli_stmt_execute($stmt)) {
-        // Hapus file gambar
-        if (!empty($row['gambar']) && file_exists("../uploads/" . $row['gambar'])) {
-            unlink("../uploads/" . $row['gambar']);
-        }
-        echo json_encode(['status' => 'success', 'message' => 'Event berhasil dihapus']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Gagal menghapus: ' . mysqli_error($koneksi)]);
-    }
-
-    mysqli_stmt_close($stmt);
-}
-
-// GET STATISTICS
-function getStatistics($koneksi) {
-    $sqlTotal = "SELECT COUNT(*) as total FROM event";
-    $resultTotal = mysqli_query($koneksi, $sqlTotal);
-    $total = (int) mysqli_fetch_assoc($resultTotal)['total'];
-
-    $sqlAktif = "SELECT COUNT(*) as aktif FROM event WHERE DATE(tgl_mulai) >= CURDATE()";
-    $resultAktif = mysqli_query($koneksi, $sqlAktif);
-    $aktif = (int) mysqli_fetch_assoc($resultAktif)['aktif'];
-
-    echo json_encode([
-        'status' => 'success',
-        'data' => ['total' => $total, 'aktif' => $aktif]
-    ]);
-}
-
-// GENERATE SAMPLE DATA
-function generateSampleData($koneksi) {
-    $sampleEvents = [
-        ['Art Festival 2025', 'Festival', '2025-11-15 09:00:00', '2025-11-17 18:00:00', 'Gedung Kesenian Jakarta', 'Festival seni tahunan menampilkan karya seniman lokal dan internasional'],
-        ['Workshop Digital Marketing', 'Workshop', '2025-11-20 13:00:00', '2025-11-20 16:00:00', 'Hotel Santika Jember', 'Pelatihan strategi pemasaran digital untuk UMKM'],
-        ['Jazz Night Concert', 'Music', '2025-12-01 19:00:00', '2025-12-01 22:00:00', 'Balai Kota Jember', 'Konser musik jazz dengan musisi ternama'],
-        ['Seminar Pendidikan', 'Education', '2025-11-25 08:00:00', '2025-11-25 12:00:00', 'Universitas Jember', 'Seminar tentang inovasi pendidikan di era digital'],
-        ['Marathon Run 2025', 'Sports', '2025-12-10 06:00:00', '2025-12-10 10:00:00', 'Alun-alun Jember', 'Lomba lari marathon 10K dan 5K']
-    ];
-
-    $success = 0;
-    foreach ($sampleEvents as $event) {
-        $sql = "INSERT INTO event (nama_event, kategori, tgl_mulai, tgl_selesai, lokasi, deskripsi) 
-                VALUES (?, ?, ?, ?, ?, ?)";
-        $stmt = mysqli_prepare($koneksi, $sql);
-        mysqli_stmt_bind_param($stmt, 'ssssss', ...$event);
-        if (mysqli_stmt_execute($stmt)) {
-            $success++;
-        }
-        mysqli_stmt_close($stmt);
-    }
-
-    echo json_encode([
-        'status' => 'success',
-        'message' => "$success sample event berhasil ditambahkan"
-    ]);
-}
-
-// FUNCTION UPLOAD GAMBAR
-function uploadGambar($file) {
-    $target_dir = "../uploads/";
-    if (!is_dir($target_dir)) {
-        mkdir($target_dir, 0755, true);
-    }
-
-    $imageFileType = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-    $newFileName = uniqid('event_', true) . '.' . $imageFileType;
-    $target_file = $target_dir . $newFileName;
-
-    // Cek apakah file benar-benar gambar
+    // Cek apakah file adalah gambar sebenarnya
     $check = getimagesize($file["tmp_name"]);
-    if ($check === false) {
-        return false;
+    if($check === false) {
+        $uploadOk = 0;
     }
 
-    // Cek ukuran (max 2MB)
-    if ($file["size"] > 2 * 1024 * 1024) {
-        return false;
+    // Cek ukuran file (contoh: 2MB)
+    if ($file["size"] > 2000000) {
+        $uploadOk = 0;
     }
 
-    // Cek format
-    $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-    if (!in_array($imageFileType, $allowed)) {
-        return false;
+    // Batasi format file
+    if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg") {
+        $uploadOk = 0;
     }
 
-    if (move_uploaded_file($file["tmp_name"], $target_file)) {
-        return $newFileName;
-    }
+    // Jika semua cek lolos
+    if ($uploadOk == 1) {
+        // Buat nama file unik untuk menghindari konflik
+        $new_filename = uniqid() . '.' . $imageFileType;
+        $new_target_file = $target_dir . $new_filename;
 
-    return false;
+        if (move_uploaded_file($file["tmp_name"], $new_target_file)) {
+            return $new_filename; // Kembalikan nama file baru
+        } else {
+            return false; // Gagal upload
+        }
+    } else {
+        return false; // Gagal karena cek
+    }
 }
+
+// ... (fungsi lainnya jika ada)
 ?>

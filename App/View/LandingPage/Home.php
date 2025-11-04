@@ -1,7 +1,9 @@
 <?php
+// Pastikan koneksi database di-include
 include('../SuperAdmin/Header.php');
 include('../../../Config/ConnectDB.php');
 
+// Fungsi untuk mengambil data ormawa (mungkin masih digunakan di bagian lain)
 function getOrmawaData($koneksi) {
     $sql = "SELECT id, nama_ormawa, deskripsi, logo FROM ormawa ORDER BY nama_ormawa ASC";
     $result = mysqli_query($koneksi, $sql);
@@ -16,10 +18,38 @@ function getOrmawaData($koneksi) {
     }
     return $data;
 }
+
+// Fungsi untuk mengambil data kegiatan/event terbaru
+function getKegiatanTerbaru($koneksi, $jumlah = 6) {
+    // Query untuk mengambil event terbaru, misalnya berdasarkan tgl_mulai DESC
+    $sql = "SELECT e.id, e.nama_event, e.deskripsi, e.tgl_mulai, e.tgl_selesai, e.lokasi, o.nama_ormawa
+            FROM event e
+            JOIN ormawa o ON e.ormawa_id = o.id
+            ORDER BY e.tgl_mulai DESC
+            LIMIT ?";
+    $stmt = mysqli_prepare($koneksi, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $jumlah);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $data = [];
+    if ($result) {
+        while($row = mysqli_fetch_assoc($result)) {
+            $data[] = $row;
+        }
+        mysqli_free_result($result);
+    } else {
+        echo "Error fetching events: " . mysqli_error($koneksi);
+    }
+    mysqli_stmt_close($stmt);
+    return $data;
+}
+
 $ormawa_list = getOrmawaData($koneksi);
+$kegiatan_list = getKegiatanTerbaru($koneksi, 6); // Ambil 6 kegiatan terbaru
 $logo_dir = '../uploads/logos/'; // Path dari Home.php ke folder uploads/logos
 
-// Fungsi untuk membagi array menjadi chunk 3
+// Fungsi untuk membagi array menjadi chunk 3 (untuk slider ormawa)
 function array_chunk_3($array) {
     return array_chunk($array, 3, true);
 }
@@ -159,6 +189,55 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
         .ormawa-dot.active {
             background-color: #667eea;
         }
+        /* Gaya untuk card kegiatan */
+        .activity-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .activity-img {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        .activity-date {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 5px;
+            text-align: center;
+            min-width: 60px;
+        }
+        .activity-date .day {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .activity-date .month {
+            display: block;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+        .activity-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .activity-content h5 {
+            flex-grow: 1;
+        }
+        .activity-content a {
+            align-self: flex-start;
+        }
     </style>
 </head>
 
@@ -251,6 +330,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
         </div>
     </section>
 
+    <!-- Section Kegiatan Terbaru - Diambil dari database -->
     <section id="kegiatan">
         <div class="container">
             <div class="section-title">
@@ -259,107 +339,36 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
             </div>
 
             <div class="row g-4">
-                <div class="col-lg-4 col-md-6">
-                    <div class="activity-card">
-                        <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800');">
-                            <div class="activity-date">
-                                <span class="day">25</span>
-                                <span class="month">Jan</span>
+                <?php if (!empty($kegiatan_list)): ?>
+                    <?php foreach ($kegiatan_list as $kegiatan): ?>
+                        <div class="col-lg-4 col-md-6">
+                            <div class="activity-card">
+                                <!-- Gunakan placeholder karena tabel event tidak memiliki kolom gambar -->
+                                <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800');">
+                                    <div class="activity-date">
+                                        <?php
+                                        $tgl_mulai_obj = new DateTime($kegiatan['tgl_mulai']);
+                                        ?>
+                                        <span class="day"><?php echo $tgl_mulai_obj->format('d'); ?></span>
+                                        <span class="month"><?php echo $tgl_mulai_obj->format('M'); ?></span>
+                                    </div>
+                                </div>
+                                <div class="activity-content">
+                                    <!-- Gunakan nama ormawa sebagai badge -->
+                                    <span class="badge bg-primary mb-2"><?php echo htmlspecialchars($kegiatan['nama_ormawa']); ?></span>
+                                    <h5 class="mb-2"><?php echo htmlspecialchars($kegiatan['nama_event']); ?></h5>
+                                    <p class="text-muted mb-3"><?php echo htmlspecialchars(substr($kegiatan['deskripsi'], 0, 100)) . (strlen($kegiatan['deskripsi']) > 100 ? '...' : ''); ?></p>
+                                    <!-- Ganti href ke halaman detail event yang sesungguhnya -->
+                                    <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
+                                </div>
                             </div>
                         </div>
-                        <div class="activity-content">
-                            <span class="badge bg-primary mb-2">Workshop</span>
-                            <h5 class="mb-2">Workshop Kepemimpinan Mahasiswa</h5>
-                            <p class="text-muted mb-3">Pelatihan softskill kepemimpinan untuk seluruh pengurus ormawa dengan narasumber berpengalaman.</p>
-                            <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
-                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="col-12">
+                        <p class="text-center">Belum ada kegiatan yang diumumkan.</p>
                     </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="activity-card">
-                        <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800');">
-                            <div class="activity-date">
-                                <span class="day">20</span>
-                                <span class="month">Jan</span>
-                            </div>
-                        </div>
-                        <div class="activity-content">
-                            <span class="badge bg-success mb-2">Seminar</span>
-                            <h5 class="mb-2">Seminar Kewirausahaan Digital</h5>
-                            <p class="text-muted mb-3">Menghadirkan pengusaha muda sukses untuk berbagi pengalaman membangun bisnis digital.</p>
-                            <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="activity-card">
-                        <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800');">
-                            <div class="activity-date">
-                                <span class="day">15</span>
-                                <span class="month">Jan</span>
-                            </div>
-                        </div>
-                        <div class="activity-content">
-                            <span class="badge bg-info mb-2">Kompetisi</span>
-                            <h5 class="mb-2">Lomba Debat Antar Fakultas</h5>
-                            <p class="text-muted mb-3">Kompetisi debat bahasa Indonesia dan Inggris untuk meningkatkan kemampuan public speaking.</p>
-                            <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="activity-card">
-                        <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1593113598332-cd288d649433?w=800');">
-                            <div class="activity-date">
-                                <span class="day">10</span>
-                                <span class="month">Jan</span>
-                            </div>
-                        </div>
-                        <div class="activity-content">
-                            <span class="badge bg-warning mb-2">Sosial</span>
-                            <h5 class="mb-2">Bakti Sosial Masyarakat</h5>
-                            <p class="text-muted mb-3">Program pengabdian masyarakat di desa binaan dengan kegiatan pendidikan dan kesehatan.</p>
-                            <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="activity-card">
-                        <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800');">
-                            <div class="activity-date">
-                                <span class="day">05</span>
-                                <span class="month">Jan</span>
-                            </div>
-                        </div>
-                        <div class="activity-content">
-                            <span class="badge bg-danger mb-2">Olahraga</span>
-                            <h5 class="mb-2">Turnamen Futsal Antar Ormawa</h5>
-                            <p class="text-muted mb-3">Kompetisi futsal untuk mempererat silaturahmi dan sportivitas antar organisasi mahasiswa.</p>
-                            <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6">
-                    <div class="activity-card">
-                        <div class="activity-img" style="background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800');">
-                            <div class="activity-date">
-                                <span class="day">01</span>
-                                <span class="month">Jan</span>
-                            </div>
-                        </div>
-                        <div class="activity-content">
-                            <span class="badge bg-secondary mb-2">Pelatihan</span>
-                            <h5 class="mb-2">Training Manajemen Organisasi</h5>
-                            <p class="text-muted mb-3">Pelatihan manajemen dan administrasi organisasi untuk meningkatkan efektivitas kerja.</p>
-                            <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
-                        </div>
-                    </div>
-                </div>
+                <?php endif; ?>
             </div>
         </div>
     </section>
@@ -398,7 +407,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
                                 <?php for($i = count($chunk); $i < 3; $i++): ?>
                                     <div class="ormawa-card" style="visibility: hidden; border: none; box-shadow: none;">
                                         <div class="ormawa-logo">
-                                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+                                            <img src="image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
                                         </div>
                                         <div class="ormawa-content">
                                             <h5 class="ormawa-title">&nbsp;</h5>
