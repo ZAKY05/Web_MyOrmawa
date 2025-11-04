@@ -3,12 +3,24 @@ include '../../../Config/ConnectDB.php';
 
 $active_form_id = isset($_GET['form_id']) ? (int)$_GET['form_id'] : 0;
 $show_create_form = isset($_GET['create']) && $_GET['create'] == '1';
+// Tambahkan variabel untuk melihat submissions
+$view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_submissions'] : 0;
 
-$forms_result = mysqli_query($koneksi, "SELECT id, judul, deskripsi, gambar FROM form_info ORDER BY created_at DESC");
+// Include komponen submissions
+include '../SuperAdmin/ViewSubmissions.php';
+
+// --- PERUBAHAN: Query JOIN untuk mengambil nama pembuat ---
+$forms_result = mysqli_query($koneksi, "
+    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, u.nama as pembuat_nama
+    FROM form_info fi
+    JOIN user u ON fi.user_id = u.id
+    ORDER BY fi.created_at DESC
+");
 $all_forms = [];
 while ($row = mysqli_fetch_assoc($forms_result)) {
     $all_forms[] = $row;
 }
+// --- SAMPAI SINI ---
 
 $form_detail = null;
 $form_fields = [];
@@ -83,6 +95,8 @@ include('../SuperAdmin/Header.php');
             elseif ($error_msg == 'invalid_type') echo 'Tipe field tidak valid.';
             elseif ($error_msg == 'invalid_id') echo 'ID formulir tidak valid.';
             elseif ($error_msg == 'unknown_action') echo 'Aksi tidak dikenali.';
+            elseif ($error_msg == 'user_not_logged_in') echo 'Anda harus login untuk melakukan operasi ini.';
+            elseif ($error_msg == 'unauthorized_access') echo 'Anda tidak memiliki izin untuk mengakses formulir ini.';
             else echo htmlspecialchars($error_msg);
             ?>
             <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
@@ -200,6 +214,9 @@ include('../SuperAdmin/Header.php');
                                             <?php if ($active_form_id == $form['id']): ?>
                                                 <span class="badge badge-success badge-sm ml-1">Aktif</span>
                                             <?php endif; ?>
+                                            <!-- --- PERUBAHAN: Tampilkan nama pembuat --- -->
+                                            <small class="text-muted d-block">oleh <?= htmlspecialchars($form['pembuat_nama']) ?></small>
+                                            <!-- --- SAMPAI SINI --- -->
                                             <p class="text-muted small mb-0 mt-1">
                                                 <?= htmlspecialchars(substr($form['deskripsi'], 0, 60)) . (strlen($form['deskripsi']) > 60 ? '...' : '') ?>
                                             </p>
@@ -208,8 +225,16 @@ include('../SuperAdmin/Header.php');
                                             <a href="?page=oprec&form_id=<?= $form['id'] ?>" class="btn btn-info btn-sm btn-circle" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <button class="btn btn-danger btn-sm btn-circle" title="Hapus" 
-                                                    data-toggle="modal" 
+                                            <!-- Tombol Baru: Isi Formulir -->
+                                            <a href="../Superadmin/ViewForm.php?form_info_id=<?= $form['id'] ?>" class="btn btn-success btn-sm btn-circle" title="Isi Formulir" target="_blank">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                            <!-- Tombol Baru: Lihat Submissions -->
+                                            <a href="?page=oprec&view_submissions=<?= $form['id'] ?>" class="btn btn-warning btn-sm btn-circle" title="Lihat Submissions">
+                                                <i class="fas fa-users"></i>
+                                            </a>
+                                            <button class="btn btn-danger btn-sm btn-circle" title="Hapus"
+                                                    data-toggle="modal"
                                                     data-target="#deleteFormModal<?= $form['id'] ?>">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -228,7 +253,7 @@ include('../SuperAdmin/Header.php');
                                                 </button>
                                             </div>
                                             <div class="modal-body">
-                                                Apakah Anda yakin ingin menghapus formulir <strong>"<?= htmlspecialchars($form['judul']) ?>"</strong>? 
+                                                Apakah Anda yakin ingin menghapus formulir <strong>"<?= htmlspecialchars($form['judul']) ?>"</strong>?
                                                 <br><br>
                                                 <span class="text-danger">Semua field dan data yang terkait akan ikut terhapus!</span>
                                             </div>
@@ -279,7 +304,7 @@ include('../SuperAdmin/Header.php');
                                 <label class="small font-weight-bold">Gambar Cover</label>
                                 <?php if ($form_detail && $form_detail['gambar']): ?>
                                     <div class="mb-2">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
+                                        <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
                                     </div>
                                 <?php endif; ?>
                                 <input type="file" name="gambar" class="form-control-file" accept="image/*">
@@ -297,9 +322,13 @@ include('../SuperAdmin/Header.php');
             <?php endif; ?>
         </div>
 
-        <!-- Kolom Kanan: Tambah Field & Preview -->
+        <!-- Kolom Kanan: Tambah Field & Preview / Submissions -->
         <div class="col-xl-8 col-lg-7">
-            <?php if ($active_form_id > 0 && $form_detail): ?>
+            <?php if ($view_submissions_form_id > 0): ?>
+                <!-- Tampilkan komponen submissions -->
+                <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id); ?>
+            <?php elseif ($active_form_id > 0 && $form_detail): ?>
+                <!-- Original Form Editing Content -->
                 <div class="row">
                     <!-- Tambah Field -->
                     <div class="col-lg-6 mb-4">
@@ -321,7 +350,6 @@ include('../SuperAdmin/Header.php');
                                         <label class="small font-weight-bold">Tipe Field <span class="text-danger">*</span></label>
                                         <select name="type" id="type" class="form-control" onchange="toggleOptions()">
                                             <option value="text">Input Text</option>
-                                            <option value="email">Email</option>
                                             <option value="number">Number</option>
                                             <option value="textarea">Text Area</option>
                                             <option value="file">File Upload</option>
@@ -368,10 +396,10 @@ include('../SuperAdmin/Header.php');
                             <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                                 <?php if ($form_detail['gambar']): ?>
                                     <div class="text-center mb-3">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
+                                        <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <h5 class="font-weight-bold text-gray-900"><?= htmlspecialchars($form_detail['judul']) ?></h5>
                                 <p class="text-muted small mb-3"><?= htmlspecialchars($form_detail['deskripsi']) ?></p>
                                 <hr>
@@ -387,8 +415,6 @@ include('../SuperAdmin/Header.php');
                                             <label class="small font-weight-bold"><?= htmlspecialchars($field['label']) ?></label>
                                             <?php if ($field['tipe'] === 'text'): ?>
                                                 <input type="text" class="form-control form-control-sm" placeholder="<?= htmlspecialchars($field['label']) ?>" disabled>
-                                            <?php elseif ($field['tipe'] === 'email'): ?>
-                                                <input type="email" class="form-control form-control-sm" placeholder="nama@email.com" disabled>
                                             <?php elseif ($field['tipe'] === 'number'): ?>
                                                 <input type="number" class="form-control form-control-sm" placeholder="0" disabled>
                                             <?php elseif ($field['tipe'] === 'textarea'): ?>
@@ -469,8 +495,8 @@ include('../SuperAdmin/Header.php');
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-danger btn-sm btn-circle" 
-                                                            data-toggle="modal" 
+                                                    <button type="button" class="btn btn-danger btn-sm btn-circle"
+                                                            data-toggle="modal"
                                                             data-target="#deleteFieldModal<?= $field['id'] ?>"
                                                             title="Hapus Field">
                                                         <i class="fas fa-trash"></i>
