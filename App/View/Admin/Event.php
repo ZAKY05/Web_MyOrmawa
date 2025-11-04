@@ -1,14 +1,13 @@
-<?php include('../SuperAdmin/Header.php');?>
+<?php include('Header.php');?>
 <?php include('../FormData/TambahEvent.php');?>
 
 <div class="container-fluid">
-
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Kompetisi</h1>
+        <h1 class="h3 mb-0 text-gray-800">Manajemen Event</h1>
         <div class="btn-group" role="group">
             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#tambahEventModal">
-                <i class="fas fa-plus fa-sm"></i> Tambah Kompetisi
+                <i class="fas fa-plus fa-sm"></i> Tambah Event
             </button>
             <button type="button" class="btn btn-success btn-sm" id="generateSampleEvents">
                 <i class="fas fa-database fa-sm"></i> Generate Sample Data
@@ -19,7 +18,7 @@
     <!-- Filter Section -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filter Kompetisi</h6>
+            <h6 class="m-0 font-weight-bold text-primary">Filter Event</h6>
         </div>
         <div class="card-body">
             <div class="row">
@@ -59,7 +58,9 @@
 
     <!-- Event Cards Grid -->
     <div class="row" id="eventCardsContainer">
-        <!-- Event cards will be dynamically loaded here -->
+        <div class="col-12 text-center">
+            <p class="text-muted">Loading...</p>
+        </div>
     </div>
 
     <!-- Event Table -->
@@ -82,7 +83,9 @@
                         </tr>
                     </thead>
                     <tbody id="eventTableBody">
-                        <!-- Data akan diisi oleh JavaScript -->
+                        <tr>
+                            <td colspan="7" class="text-center">Loading data...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -91,7 +94,7 @@
 
     <!-- Statistik Event -->
     <div class="row">
-        <div class="col  col-md-6 mb-4">
+        <div class="col col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
@@ -123,8 +126,9 @@
             </div>
         </div>
     </div>
-
 </div>
 
+<!-- Include JavaScript -->
+<script src="../../../Asset/Js/Event.js"></script>
 
-<?php include('../SuperAdmin/Footer.php');?>
+<?php include('Footer.php');?>

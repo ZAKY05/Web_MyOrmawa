@@ -1,6 +1,6 @@
 <?php
-include('../SuperAdmin/Header.php');
-include('../FormData/TambahAbsen.php');
+include('Header.php');
+include('../SuperAdmin/FormData/TambahAbsen.php');
 ?>
 <div class="container-fluid">
 
@@ -163,5 +163,5 @@ include('../FormData/TambahAbsen.php');
 
 </div>
 <?php
-include('../SuperAdmin/Footer.php');
+include('Footer.php');
 ?>

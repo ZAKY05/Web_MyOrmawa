@@ -1,8 +1,18 @@
 <?php
 include '../Config/ConnectDB.php';
 
+// Pastikan sesi dimulai untuk mengakses $_SESSION
+session_start(); 
+
 // --- FUNGSI BARU: Membuat formulir baru ---
 if (isset($_POST['action']) && $_POST['action'] === 'create_form_info') {
+    // Ambil user_id dari sesi
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=user_not_logged_in");
+        exit;
+    }
+    $user_id = (int)$_SESSION['user_id'];
+
     $judul = trim($_POST['judul'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
 
@@ -14,7 +24,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_form_info') {
     // Handle upload gambar
     $gambar_nama = '';
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
-        $target_dir = "../uploads/"; // PERBAIKAN: Typo path diperbaiki dari "uplods/" ke "uploads/"
+        $target_dir = "../uploads/form/"; 
         $gambar_nama_asli = basename($_FILES["gambar"]["name"]);
         $target_file = $target_dir . $gambar_nama_asli;
         $uploadOk = 1;
@@ -56,10 +66,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_form_info') {
         }
     }
 
-    // Simpan ke tabel `form_info`
-    $stmt = $koneksi->prepare("INSERT INTO form_info (judul, deskripsi, gambar) VALUES (?, ?, ?)");
+    // Simpan ke tabel `form_info` - Tambahkan user_id
+    $stmt = $koneksi->prepare("INSERT INTO form_info (judul, deskripsi, gambar, user_id) VALUES (?, ?, ?, ?)");
     if ($stmt) {
-        $stmt->bind_param("sss", $judul, $deskripsi, $gambar_nama);
+        $stmt->bind_param("sssi", $judul, $deskripsi, $gambar_nama, $user_id);
         $stmt->execute();
         $new_form_info_id = $stmt->insert_id;
         $stmt->close();
@@ -79,8 +89,28 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
     $judul = trim($_POST['judul'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
 
+    // Ambil user_id dari sesi
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=user_not_logged_in");
+        exit;
+    }
+    $current_user_id = (int)$_SESSION['user_id'];
+
     if (!$form_info_id || !$judul) {
         header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=invalid_data");
+        exit;
+    }
+
+    // Validasi apakah user yang sedang login adalah pembuat formulir
+    $stmt_check = $koneksi->prepare("SELECT user_id FROM form_info WHERE id = ?");
+    $stmt_check->bind_param("i", $form_info_id);
+    $stmt_check->execute();
+    $result_check = $stmt_check->get_result();
+    $row_check = $result_check->fetch_assoc();
+    $stmt_check->close();
+
+    if (!$row_check || $row_check['user_id'] != $current_user_id) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=unauthorized_access");
         exit;
     }
 
@@ -96,7 +126,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
     // Handle upload gambar baru (jika ada)
     $gambar_nama = $gambar_lama;
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0 && $_FILES['gambar']['size'] > 0) {
-        $target_dir = "../uploads/"; // PERBAIKAN: Typo path diperbaiki
+        $target_dir = "../uploads/form/"; 
         $gambar_nama_asli_baru = basename($_FILES["gambar"]["name"]);
         $target_file = $target_dir . $gambar_nama_asli_baru;
         $uploadOk = 1;
@@ -143,7 +173,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
         }
     }
 
-    // Update ke tabel `form_info`
+    // Update ke tabel `form_info` - JANGAN menyertakan user_id
     $stmt = $koneksi->prepare("UPDATE form_info SET judul = ?, deskripsi = ?, gambar = ? WHERE id = ?");
     if ($stmt) {
         $stmt->bind_param("sssi", $judul, $deskripsi, $gambar_nama, $form_info_id);
@@ -160,9 +190,30 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
 }
 
 // --- FUNGSI BARU: Menghapus formulir (DIPERBAIKI untuk mendukung GET) ---
+// Tambahkan validasi akses di sini juga jika diinginkan, mirip dengan update_form_info
 if (isset($_GET['action']) && $_GET['action'] === 'delete_form') {
     $form_info_id = (int)($_GET['id'] ?? 0);
     if ($form_info_id > 0) {
+        // Ambil user_id dari sesi
+        if (!isset($_SESSION['user_id'])) {
+            header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=user_not_logged_in");
+            exit;
+        }
+        $current_user_id = (int)$_SESSION['user_id'];
+
+        // Validasi apakah user yang sedang login adalah pembuat formulir
+        $stmt_check = $koneksi->prepare("SELECT user_id FROM form_info WHERE id = ?");
+        $stmt_check->bind_param("i", $form_info_id);
+        $stmt_check->execute();
+        $result_check = $stmt_check->get_result();
+        $row_check = $result_check->fetch_assoc();
+        $stmt_check->close();
+
+        if (!$row_check || $row_check['user_id'] != $current_user_id) {
+            header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=unauthorized_access");
+            exit;
+        }
+
         // Ambil nama gambar untuk dihapus
         $stmt = $koneksi->prepare("SELECT gambar FROM form_info WHERE id = ?");
         $stmt->bind_param("i", $form_info_id);
@@ -179,8 +230,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_form') {
         $stmt->close();
 
         // Hapus file gambar dari server jika ada
-        if ($gambar_nama && file_exists("../uploads/" . $gambar_nama)) {
-            unlink("../uploads/" . $gambar_nama);
+        if ($gambar_nama && file_exists("../uploads/form/" . $gambar_nama)) {
+            unlink("../uploads/form/" . $gambar_nama);
         }
 
         header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&deleted=form");
@@ -196,6 +247,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_field') {
     $form_info_id = (int)($_POST['form_info_id'] ?? 0);
     $label = trim($_POST['label'] ?? '');
     $type = $_POST['type'] ?? '';
+
+    // Validasi akses ke form_info_id (opsional: cek apakah user_id cocok, tapi biasanya tidak diperlukan jika form_id sudah valid)
+    // Ambil user_id dari sesi
+    if (!isset($_SESSION['user_id'])) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=user_not_logged_in");
+        exit;
+    }
+    // Validasi bisa ditambahkan di sini jika perlu
 
     if (!$form_info_id || !$label || !$type) {
         header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=invalid_data");
@@ -237,6 +296,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_field') {
     $id = (int)($_POST['delete_id'] ?? 0);
     $form_info_id = (int)($_POST['form_info_id'] ?? 0);
     if ($id > 0) {
+        // Validasi akses ke form_info_id (opsional: cek apakah user_id cocok)
+        // Ambil user_id dari sesi
+        if (!isset($_SESSION['user_id'])) {
+            header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=user_not_logged_in");
+            exit;
+        }
+        // Validasi bisa ditambahkan di sini jika perlu
+
         $stmt = $koneksi->prepare("DELETE FROM form WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
