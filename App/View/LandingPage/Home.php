@@ -239,6 +239,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
         .activity-content a {
             align-self: flex-start;
         }
+        
     </style>
 </head>
 
@@ -589,41 +590,94 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
     </footer>
 
     <script>
-        let currentOrmawaSlide = 0;
-        const totalOrmawaSlides = <?php echo count($ormawa_chunks); ?>;
+    // Inisialisasi slider
+    let currentOrmawaSlide = 0;
+    const totalOrmawaSlides = <?php echo count($ormawa_chunks); ?>; // Ambil jumlah total slide dari PHP
+    let slideInterval; // Variabel untuk menyimpan referensi interval auto-slide
 
-        function showOrmawaSlide(n) {
-            const slides = document.querySelectorAll('.ormawa-slide');
-            const dots = document.querySelectorAll('.ormawa-dot');
-            if (slides.length === 0) return;
+    // Fungsi untuk menampilkan slide tertentu menggunakan transform
+    function showOrmawaSlide(n) {
+        const slides = document.querySelectorAll('.ormawa-slide'); // Ambil semua elemen slide
+        const dots = document.querySelectorAll('.ormawa-dot');    // Ambil semua dot indikator
 
-            if (n >= slides.length) currentOrmawaSlide = 0;
-            if (n < 0) currentOrmawaSlide = slides.length - 1;
+        // Validasi jumlah slide
+        if (slides.length === 0) return;
 
-            slides.forEach(slide => slide.style.display = 'none');
-            dots.forEach(dot => dot.classList.remove('active'));
+        // Perbarui currentOrmawaSlide dan pastikan tetap dalam batas
+        if (n >= slides.length) {
+            currentOrmawaSlide = 0;
+        } else if (n < 0) {
+            currentOrmawaSlide = slides.length - 1;
+        } else {
+            currentOrmawaSlide = n;
+        }
 
-            slides[currentOrmawaSlide].style.display = 'flex';
+        // Ambil elemen wrapper slider
+        const wrapper = document.getElementById('ormawaSlider');
+
+        // Hapus kelas 'active' dari semua dot
+        dots.forEach(dot => dot.classList.remove('active'));
+
+        // Tambahkan kelas 'active' ke dot yang sesuai dengan slide saat ini
+        if (dots[currentOrmawaSlide]) {
             dots[currentOrmawaSlide].classList.add('active');
-            // Update the wrapper transform for consistency if using flex
-            const wrapper = document.getElementById('ormawaSlider');
+        }
+
+        // Gunakan transform untuk menggeser wrapper ke slide yang benar
+        if (wrapper) {
             wrapper.style.transform = `translateX(-${currentOrmawaSlide * 100}%)`;
         }
+    }
 
-        function changeOrmawaSlide(n) {
-            showOrmawaSlide(currentOrmawaSlide += n);
+    // Fungsi untuk menggeser slide ke kiri atau kanan
+    function changeOrmawaSlide(n) {
+        showOrmawaSlide(currentOrmawaSlide + n);
+    }
+
+    // Fungsi untuk langsung ke slide tertentu (berdasarkan dot yang diklik)
+    function goToOrmawaSlide(n) {
+        showOrmawaSlide(n);
+    }
+
+    // Fungsi untuk memulai auto-slide
+    function startAutoSlide() {
+        if (totalOrmawaSlides <= 1) return; // Jangan auto-slide jika hanya ada satu slide
+        // Hentikan interval sebelumnya jika ada (untuk mencegah banyak interval)
+        stopAutoSlide();
+        // Buat interval baru, panggil changeOrmawaSlide(1) setiap 5 detik (5000 ms)
+        slideInterval = setInterval(() => {
+            changeOrmawaSlide(1); // Geser ke kanan
+        }, 5000); // 5000 milidetik = 5 detik
+    }
+
+    // Fungsi untuk menghentikan auto-slide
+    function stopAutoSlide() {
+        if (slideInterval) {
+            clearInterval(slideInterval);
+            slideInterval = null;
         }
+    }
 
-        function goToOrmawaSlide(n) {
-            currentOrmawaSlide = n;
-            showOrmawaSlide(currentOrmawaSlide);
+    // Fungsi untuk melanjutkan auto-slide (kebalikan dari stop)
+    function resumeAutoSlide() {
+        if (totalOrmawaSlides > 1) { // Hanya lanjutkan jika lebih dari satu slide
+            startAutoSlide();
         }
+    }
 
-        // Initialize slider
-        document.addEventListener('DOMContentLoaded', function() {
-            showOrmawaSlide(currentOrmawaSlide);
-        });
-    </script>
+    // Jalankan showOrmawaSlide(0) saat halaman dimuat untuk menampilkan slide pertama
+    document.addEventListener('DOMContentLoaded', function() {
+        showOrmawaSlide(currentOrmawaSlide);
+        startAutoSlide(); // Mulai auto-slide saat halaman selesai dimuat
+
+        // Tambahkan event listener untuk menjeda saat hover
+        const sliderContainer = document.querySelector('.ormawa-slider-container');
+        if (sliderContainer) {
+            sliderContainer.addEventListener('mouseenter', stopAutoSlide);
+            sliderContainer.addEventListener('mouseleave', resumeAutoSlide);
+        }
+    });
+</script>
     <script src="../../../Asset/Js/LandingPage.js"></script>
 </body>
 </html>
