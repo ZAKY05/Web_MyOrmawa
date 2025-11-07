@@ -1,8 +1,26 @@
 <?php
 include '../Config/ConnectDB.php';
+include '../App/';
 
 // Pastikan sesi dimulai untuk mengakses $_SESSION
-session_start(); 
+session_start();
+
+// Fungsi untuk menentukan path redirect berdasarkan level user
+function get_redirect_path($user_level, $params = '') {
+    $base_path = '../App/View/';
+    $page = 'Index.php?page=oprec';
+    if ($user_level == 1) {
+        return $base_path . 'SuperAdmin/' . $page . $params;
+    } elseif ($user_level == 2) {
+        return $base_path . 'Admin/' . $page . $params;
+    } else {
+        // Default fallback atau halaman error
+        return '../App/View/SuperAdmin/Login.php';
+    }
+}
+
+// Ambil user_level dari sesi, jika tidak ada, default ke 0 (tidak login)
+$user_level = $_SESSION['user_level'] ?? 0; 
 
 // --- FUNGSI BARU: Membuat formulir baru ---
 if (isset($_POST['action']) && $_POST['action'] === 'create_form_info') {
@@ -74,11 +92,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_form_info') {
         $new_form_info_id = $stmt->insert_id;
         $stmt->close();
 
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$new_form_info_id&success=form");
+        header("Location: " . get_redirect_path($user_level, "&form_id=$new_form_info_id&success=form"));
         exit;
     } else {
         error_log("Error inserting form_info: " . $koneksi->error);
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=query_gagal");
+        header("Location: " . get_redirect_path($user_level, "&error=query_gagal"));
         exit;
     }
 }
@@ -109,8 +127,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
     $row_check = $result_check->fetch_assoc();
     $stmt_check->close();
 
-    if (!$row_check || $row_check['user_id'] != $current_user_id) {
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=unauthorized_access");
+    if (!$row_check || ($row_check['user_id'] != $current_user_id && $user_level != 1)) {
+        header("Location: " . get_redirect_path($user_level, "&form_id=$form_info_id&error=unauthorized_access"));
         exit;
     }
 
@@ -180,11 +198,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_form_info') {
         $stmt->execute();
         $stmt->close();
 
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&success=form");
+        header("Location: " . get_redirect_path($user_level, "&form_id=$form_info_id&success=form"));
         exit;
     } else {
         error_log("Error updating form_info: " . $koneksi->error);
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&error=query_gagal");
+        header("Location: " . get_redirect_path($user_level, "&form_id=$form_info_id&error=query_gagal"));
         exit;
     }
 }
@@ -209,8 +227,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_form') {
         $row_check = $result_check->fetch_assoc();
         $stmt_check->close();
 
-        if (!$row_check || $row_check['user_id'] != $current_user_id) {
-            header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=unauthorized_access");
+        if (!$row_check || ($row_check['user_id'] != $current_user_id && $user_level != 1)) {
+            header("Location: " . get_redirect_path($user_level, "&error=unauthorized_access"));
             exit;
         }
 
@@ -234,10 +252,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_form') {
             unlink("../uploads/form/" . $gambar_nama);
         }
 
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&deleted=form");
+        header("Location: " . get_redirect_path($user_level, "&deleted=form"));
         exit;
     } else {
-        header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=invalid_id");
+        header("Location: " . get_redirect_path($user_level, "&error=invalid_id"));
         exit;
     }
 }
@@ -287,7 +305,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_field') {
         $stmt->close();
     }
 
-    header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&success=field");
+    header("Location: " . get_redirect_path($user_level, "&form_id=$form_info_id&success=field"));
     exit;
 }
 
@@ -309,11 +327,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_field') {
         $stmt->execute();
         $stmt->close();
     }
-    header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&form_id=$form_info_id&deleted=field");
+    header("Location: " . get_redirect_path($user_level, "&form_id=$form_info_id&deleted=field"));
     exit;
 }
 
 // Tangani error jika tidak ada aksi yang dikenali
-header("Location: ../App/View/SuperAdmin/Index.php?page=oprec&error=unknown_action");
+header("Location: " . get_redirect_path($user_level, "&error=unknown_action"));
 exit;
 ?>

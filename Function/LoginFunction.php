@@ -57,10 +57,10 @@ if (isset($_POST['login'])) {
 
         // Redirect sesuai level
         if ($user_level === 1) {
-            header("Location: /MyOrmawa/App/View/SuperAdmin/Index.php?page=dashboard");
+            header("Location: ../App/View/SuperAdmin/Index.php?page=dashboard");
             exit();
         } elseif ($user_level === 2) {
-            header("Location: /MyOrmawa/App/View/Admin/Index.php?page=dashboard");
+            header("Location: ../App/View/Admin/Index.php?page=dashboard");
             exit();
         } else {
             $err = "Level pengguna tidak valid: " . $user_level;

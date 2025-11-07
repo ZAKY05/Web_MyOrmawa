@@ -1,14 +1,35 @@
 <?php
 include '../../../Config/ConnectDB.php';
 
+// Pastikan hanya admin yang bisa mengakses halaman ini
+if (!isset($_SESSION['user_id']) || $_SESSION['user_level'] != 2) {
+    // Arahkan ke halaman login atau halaman error
+    header("Location: /MyOrmawa/App/View/SuperAdmin/Login.php");
+    exit;
+}
+
+$current_user_id = (int)$_SESSION['user_id'];
+
 $active_form_id = isset($_GET['form_id']) ? (int)$_GET['form_id'] : 0;
 $show_create_form = isset($_GET['create']) && $_GET['create'] == '1';
+$view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_submissions'] : 0;
 
-$forms_result = mysqli_query($koneksi, "SELECT id, judul, deskripsi, gambar FROM form_info ORDER BY created_at DESC");
+// Include komponen submissions
+include '../Admin/ViewSubmissions.php';
+
+// --- PERUBAHAN: Ambil hanya form milik user yang login ---
+$forms_query = "SELECT id, judul, deskripsi, gambar FROM form_info WHERE user_id = ? ORDER BY created_at DESC";
+$stmt_forms = $koneksi->prepare($forms_query);
+$stmt_forms->bind_param("i", $current_user_id);
+$stmt_forms->execute();
+$forms_result = $stmt_forms->get_result();
+// --- SAMPAI SINI ---
+
 $all_forms = [];
-while ($row = mysqli_fetch_assoc($forms_result)) {
+while ($row = $forms_result->fetch_assoc()) {
     $all_forms[] = $row;
 }
+$stmt_forms->close();
 
 $form_detail = null;
 $form_fields = [];
@@ -208,6 +229,9 @@ include('../SuperAdmin/Header.php');
                                             <a href="?page=oprec&form_id=<?= $form['id'] ?>" class="btn btn-info btn-sm btn-circle" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            <a href="?page=oprec&view_submissions=<?= $form['id'] ?>" class="btn btn-warning btn-sm btn-circle" title="Lihat Submissions">
+                                                <i class="fas fa-users"></i>
+                                            </a>
                                             <button class="btn btn-danger btn-sm btn-circle" title="Hapus" 
                                                     data-toggle="modal" 
                                                     data-target="#deleteFormModal<?= $form['id'] ?>">
@@ -261,6 +285,7 @@ include('../SuperAdmin/Header.php');
                     <div class="card-body">
                         <form method="POST" action="../../../Function/FormFunction.php" enctype="multipart/form-data">
                             <input type="hidden" name="action" value="<?= $active_form_id > 0 ? 'update_form_info' : 'create_form_info' ?>">
+                            <input type="hidden" name="user_id" value="<?= $_SESSION['user_id'] ?>">
                             <?php if ($active_form_id > 0): ?>
                                 <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
                             <?php endif; ?>
@@ -297,248 +322,250 @@ include('../SuperAdmin/Header.php');
             <?php endif; ?>
         </div>
 
-        <!-- Kolom Kanan: Tambah Field & Preview -->
-        <div class="col-xl-8 col-lg-7">
-            <?php if ($active_form_id > 0 && $form_detail): ?>
-                <div class="row">
-                    <!-- Tambah Field -->
-                    <div class="col-lg-6 mb-4">
+                <!-- Kolom Kanan: Tambah Field & Preview / Submissions -->
+                <div class="col-xl-8 col-lg-7">
+                    <?php if ($view_submissions_form_id > 0): ?>
+                        <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id, $current_user_id); ?>
+                    <?php elseif ($active_form_id > 0 && $form_detail): ?>
+                        <!-- Original Form Editing Content -->
+                        <div class="row">
+                            <!-- Tambah Field -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3">
+                                        <h6 class="m-0 font-weight-bold text-success">Tambah Field Baru</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <form method="POST" action="../../../Function/FormFunction.php">
+                                            <input type="hidden" name="action" value="add_field">
+                                            <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
+        
+                                            <div class="form-group">
+                                                <label class="small font-weight-bold">Label Field <span class="text-danger">*</span></label>
+                                                <input type="text" name="label" class="form-control" placeholder="Contoh: Nama Lengkap" required>
+                                            </div>
+        
+                                            <div class="form-group">
+                                                <label class="small font-weight-bold">Tipe Field <span class="text-danger">*</span></label>
+                                                <select name="type" id="type" class="form-control" onchange="toggleOptions()">
+                                                    <option value="text">Input Text</option>
+                                                    <option value="email">Email</option>
+                                                    <option value="number">Number</option>
+                                                    <option value="textarea">Text Area</option>
+                                                    <option value="file">File Upload</option>
+                                                    <option value="radio">Radio Button</option>
+                                                    <option value="select">Dropdown Select</option>
+                                                </select>
+                                            </div>
+        
+                                            <div id="options-container" style="display:none;">
+                                                <div class="card bg-light mb-3">
+                                                    <div class="card-body p-3">
+                                                        <label class="small font-weight-bold mb-2">Opsi Pilihan</label>
+                                                        <div id="options-list">
+                                                            <div class="input-group input-group-sm mb-2">
+                                                                <input type="text" name="options[]" class="form-control" placeholder="Opsi 1">
+                                                                <div class="input-group-append">
+                                                                    <button type="button" class="btn btn-danger" onclick="removeOption(this)" style="display:none;">
+                                                                        <i class="fas fa-times"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="btn btn-secondary btn-sm btn-block" onclick="addOption()">
+                                                            <i class="fas fa-plus"></i> Tambah Opsi
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+        
+                                            <button type="submit" class="btn btn-success btn-block">
+                                                <i class="fas fa-plus"></i> Tambah Field
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+        
+                            <!-- Preview Form -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="card shadow mb-4">
+                                    <div class="card-header py-3">
+                                        <h6 class="m-0 font-weight-bold text-dark">Preview Form</h6>
+                                    </div>
+                                    <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                                        <?php if ($form_detail['gambar']): ?>
+                                            <div class="text-center mb-3">
+                                                <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <h5 class="font-weight-bold text-gray-900"><?= htmlspecialchars($form_detail['judul']) ?></h5>
+                                        <p class="text-muted small mb-3"><?= htmlspecialchars($form_detail['deskripsi']) ?></p>
+                                        <hr>
+        
+                                        <?php if (empty($form_fields)): ?>
+                                            <div class="text-center text-muted py-4">
+                                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                                <p class="small mb-0">Belum ada field</p>
+                                            </div>
+                                        <?php else: ?>
+                                            <?php foreach ($form_fields as $field): ?>
+                                                <div class="form-group">
+                                                    <label class="small font-weight-bold"><?= htmlspecialchars($field['label']) ?></label>
+                                                    <?php if ($field['tipe'] === 'text'): ?>
+                                                        <input type="text" class="form-control form-control-sm" placeholder="<?= htmlspecialchars($field['label']) ?>" disabled>
+                                                    <?php elseif ($field['tipe'] === 'email'): ?>
+                                                        <input type="email" class="form-control form-control-sm" placeholder="nama@email.com" disabled>
+                                                    <?php elseif ($field['tipe'] === 'number'): ?>
+                                                        <input type="number" class="form-control form-control-sm" placeholder="0" disabled>
+                                                    <?php elseif ($field['tipe'] === 'textarea'): ?>
+                                                        <textarea class="form-control form-control-sm" rows="2" placeholder="<?= htmlspecialchars($field['label']) ?>" disabled></textarea>
+                                                    <?php elseif ($field['tipe'] === 'file'): ?>
+                                                        <input type="file" class="form-control-file" disabled>
+                                                    <?php elseif ($field['tipe'] === 'radio'): ?>
+                                                        <?php $options = json_decode($field['opsi'], true); ?>
+                                                        <?php if (is_array($options)): ?>
+                                                            <?php foreach ($options as $opt): ?>
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="radio" disabled>
+                                                                    <label class="form-check-label small"><?= htmlspecialchars($opt) ?></label>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        <?php endif; ?>
+                                                    <?php elseif ($field['tipe'] === 'select'): ?>
+                                                        <select class="form-control form-control-sm" disabled>
+                                                            <option>-- Pilih --</option>
+                                                            <?php $options = json_decode($field['opsi'], true); ?>
+                                                            <?php if (is_array($options)): ?>
+                                                                <?php foreach ($options as $opt): ?>
+                                                                    <option><?= htmlspecialchars($opt) ?></option>
+                                                                <?php endforeach; ?>
+                                                        <?php endif; ?>
+                                                        </select>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <!-- Daftar Field -->
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-success">Tambah Field Baru</h6>
+                                <h6 class="m-0 font-weight-bold text-primary">Daftar Field (<?= count($form_fields) ?>)</h6>
                             </div>
                             <div class="card-body">
-                                <form method="POST" action="../../../Function/FormFunction.php">
-                                    <input type="hidden" name="action" value="add_field">
-                                    <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
-
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold">Label Field <span class="text-danger">*</span></label>
-                                        <input type="text" name="label" class="form-control" placeholder="Contoh: Nama Lengkap" required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold">Tipe Field <span class="text-danger">*</span></label>
-                                        <select name="type" id="type" class="form-control" onchange="toggleOptions()">
-                                            <option value="text">Input Text</option>
-                                            <option value="email">Email</option>
-                                            <option value="number">Number</option>
-                                            <option value="textarea">Text Area</option>
-                                            <option value="file">File Upload</option>
-                                            <option value="radio">Radio Button</option>
-                                            <option value="select">Dropdown Select</option>
-                                        </select>
-                                    </div>
-
-                                    <div id="options-container" style="display:none;">
-                                        <div class="card bg-light mb-3">
-                                            <div class="card-body p-3">
-                                                <label class="small font-weight-bold mb-2">Opsi Pilihan</label>
-                                                <div id="options-list">
-                                                    <div class="input-group input-group-sm mb-2">
-                                                        <input type="text" name="options[]" class="form-control" placeholder="Opsi 1">
-                                                        <div class="input-group-append">
-                                                            <button type="button" class="btn btn-danger" onclick="removeOption(this)" style="display:none;">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button type="button" class="btn btn-secondary btn-sm btn-block" onclick="addOption()">
-                                                    <i class="fas fa-plus"></i> Tambah Opsi
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-success btn-block">
-                                        <i class="fas fa-plus"></i> Tambah Field
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Preview Form -->
-                    <div class="col-lg-6 mb-4">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-dark">Preview Form</h6>
-                            </div>
-                            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
-                                <?php if ($form_detail['gambar']): ?>
-                                    <div class="text-center mb-3">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <h5 class="font-weight-bold text-gray-900"><?= htmlspecialchars($form_detail['judul']) ?></h5>
-                                <p class="text-muted small mb-3"><?= htmlspecialchars($form_detail['deskripsi']) ?></p>
-                                <hr>
-
                                 <?php if (empty($form_fields)): ?>
                                     <div class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x mb-2"></i>
-                                        <p class="small mb-0">Belum ada field</p>
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <p>Belum ada field dalam formulir ini</p>
                                     </div>
                                 <?php else: ?>
-                                    <?php foreach ($form_fields as $field): ?>
-                                        <div class="form-group">
-                                            <label class="small font-weight-bold"><?= htmlspecialchars($field['label']) ?></label>
-                                            <?php if ($field['tipe'] === 'text'): ?>
-                                                <input type="text" class="form-control form-control-sm" placeholder="<?= htmlspecialchars($field['label']) ?>" disabled>
-                                            <?php elseif ($field['tipe'] === 'email'): ?>
-                                                <input type="email" class="form-control form-control-sm" placeholder="nama@email.com" disabled>
-                                            <?php elseif ($field['tipe'] === 'number'): ?>
-                                                <input type="number" class="form-control form-control-sm" placeholder="0" disabled>
-                                            <?php elseif ($field['tipe'] === 'textarea'): ?>
-                                                <textarea class="form-control form-control-sm" rows="2" placeholder="<?= htmlspecialchars($field['label']) ?>" disabled></textarea>
-                                            <?php elseif ($field['tipe'] === 'file'): ?>
-                                                <input type="file" class="form-control-file" disabled>
-                                            <?php elseif ($field['tipe'] === 'radio'): ?>
-                                                <?php $options = json_decode($field['opsi'], true); ?>
-                                                <?php if (is_array($options)): ?>
-                                                    <?php foreach ($options as $opt): ?>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="radio" disabled>
-                                                            <label class="form-check-label small"><?= htmlspecialchars($opt) ?></label>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th width="15%">Tipe</th>
+                                                    <th width="30%">Label</th>
+                                                    <th width="40%">Opsi</th>
+                                                    <th width="15%" class="text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($form_fields as $field): ?>
+                                                    <tr>
+                                                        <td>
+                                                            <span class="badge badge-primary"><?= strtoupper($field['tipe']) ?></span>
+                                                        </td>
+                                                        <td class="font-weight-bold"><?= htmlspecialchars($field['label']) ?></td>
+                                                        <td>
+                                                            <?php if (in_array($field['tipe'], ['radio', 'select'])): ?>
+                                                                <small class="text-muted">
+                                                                    <?php
+                                                                    $options = json_decode($field['opsi'], true);
+                                                                    if (is_array($options)) {
+                                                                        echo implode(', ', array_slice($options, 0, 3));
+                                                                        if (count($options) > 3) echo '...';
+                                                                    }
+                                                                    ?>
+                                                                </small>
+                                                            <?php else: ?>
+                                                                <small class="text-muted">-</small>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <button type="button" class="btn btn-danger btn-sm btn-circle" 
+                                                                    data-toggle="modal" 
+                                                                    data-target="#deleteFieldModal<?= $field['id'] ?>"
+                                                                    title="Hapus Field">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+        
+                                                    <!-- Modal Konfirmasi Hapus Field -->
+                                                    <div class="modal fade" id="deleteFieldModal<?= $field['id'] ?>" tabindex="-1" role="dialog" aria-labelledby="deleteFieldModalLabel<?= $field['id'] ?>" aria-hidden="true">
+                                                        <div class="modal-dialog" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title" id="deleteFieldModalLabel<?= $field['id'] ?>">Konfirmasi Hapus Field</h5>
+                                                                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                                                                        <span aria-hidden="true">×</span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="modal-body">
+                                                                    Apakah Anda yakin ingin menghapus field <strong>"<?= htmlspecialchars($field['label']) ?>"</strong>?
+                                                                    <br><br>
+                                                                    <span class="text-danger">Field ini akan dihapus secara permanen!</span>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
+                                                                    <form method="POST" action="../../../Function/FormFunction.php" class="d-inline">
+                                                                        <input type="hidden" name="action" value="delete_field">
+                                                                        <input type="hidden" name="delete_id" value="<?= $field['id'] ?>">
+                                                                        <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
+                                                                        <button type="submit" class="btn btn-danger">
+                                                                            <i class="fas fa-trash"></i> Hapus
+                                                                        </button>
+                                                                    </form>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            <?php elseif ($field['tipe'] === 'select'): ?>
-                                                <select class="form-control form-control-sm" disabled>
-                                                    <option>-- Pilih --</option>
-                                                    <?php $options = json_decode($field['opsi'], true); ?>
-                                                    <?php if (is_array($options)): ?>
-                                                        <?php foreach ($options as $opt): ?>
-                                                            <option><?= htmlspecialchars($opt) ?></option>
-                                                        <?php endforeach; ?>
-                                                    <?php endif; ?>
-                                                </select>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endforeach; ?>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Daftar Field -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Daftar Field (<?= count($form_fields) ?>)</h6>
-                    </div>
-                    <div class="card-body">
-                        <?php if (empty($form_fields)): ?>
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-inbox fa-3x mb-3"></i>
-                                <p>Belum ada field dalam formulir ini</p>
+        
+                    <?php elseif ($show_create_form): ?>
+                        <!-- Pesan saat mode create tapi belum save -->
+                        <div class="card shadow mb-4">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-arrow-left fa-4x text-gray-300 mb-4"></i>
+                                <h4 class="text-gray-800">Isi Form di Sebelah Kiri</h4>
+                                <p class="text-muted mb-0">Lengkapi judul, deskripsi, dan gambar formulir terlebih dahulu, lalu klik "Simpan Formulir" untuk melanjutkan menambahkan field.</p>
                             </div>
-                        <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th width="15%">Tipe</th>
-                                            <th width="30%">Label</th>
-                                            <th width="40%">Opsi</th>
-                                            <th width="15%" class="text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($form_fields as $field): ?>
-                                            <tr>
-                                                <td>
-                                                    <span class="badge badge-primary"><?= strtoupper($field['tipe']) ?></span>
-                                                </td>
-                                                <td class="font-weight-bold"><?= htmlspecialchars($field['label']) ?></td>
-                                                <td>
-                                                    <?php if (in_array($field['tipe'], ['radio', 'select'])): ?>
-                                                        <small class="text-muted">
-                                                            <?php
-                                                            $options = json_decode($field['opsi'], true);
-                                                            if (is_array($options)) {
-                                                                echo implode(', ', array_slice($options, 0, 3));
-                                                                if (count($options) > 3) echo '...';
-                                                            }
-                                                            ?>
-                                                        </small>
-                                                    <?php else: ?>
-                                                        <small class="text-muted">-</small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-danger btn-sm btn-circle" 
-                                                            data-toggle="modal" 
-                                                            data-target="#deleteFieldModal<?= $field['id'] ?>"
-                                                            title="Hapus Field">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Modal Konfirmasi Hapus Field -->
-                                            <div class="modal fade" id="deleteFieldModal<?= $field['id'] ?>" tabindex="-1" role="dialog" aria-labelledby="deleteFieldModalLabel<?= $field['id'] ?>" aria-hidden="true">
-                                                <div class="modal-dialog" role="document">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title" id="deleteFieldModalLabel<?= $field['id'] ?>">Konfirmasi Hapus Field</h5>
-                                                            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                                                                <span aria-hidden="true">×</span>
-                                                            </button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            Apakah Anda yakin ingin menghapus field <strong>"<?= htmlspecialchars($field['label']) ?>"</strong>?
-                                                            <br><br>
-                                                            <span class="text-danger">Field ini akan dihapus secara permanen!</span>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
-                                                            <form method="POST" action="../../../Function/FormFunction.php" class="d-inline">
-                                                                <input type="hidden" name="action" value="delete_field">
-                                                                <input type="hidden" name="delete_id" value="<?= $field['id'] ?>">
-                                                                <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
-                                                                <button type="submit" class="btn btn-danger">
-                                                                    <i class="fas fa-trash"></i> Hapus
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                        </div>
+                    <?php else: ?>
+                        <!-- Empty State -->
+                        <div class="card shadow mb-4">
+                            <div class="card-body text-center py-5">
+                                <i class="fas fa-clipboard-list fa-4x text-gray-300 mb-4"></i>
+                                <h4 class="text-gray-800">Pilih atau Buat Formulir</h4>
+                                <p class="text-muted mb-4">Silakan pilih formulir dari daftar di sebelah kiri atau klik tombol <strong>"Buat Form Baru"</strong> untuk memulai.</p>
+                                <a href="?page=oprec&create=1" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Buat Formulir Baru
+                                </a>
                             </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-            <?php elseif ($show_create_form): ?>
-                <!-- Pesan saat mode create tapi belum save -->
-                <div class="card shadow mb-4">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-arrow-left fa-4x text-gray-300 mb-4"></i>
-                        <h4 class="text-gray-800">Isi Form di Sebelah Kiri</h4>
-                        <p class="text-muted mb-0">Lengkapi judul, deskripsi, dan gambar formulir terlebih dahulu, lalu klik "Simpan Formulir" untuk melanjutkan menambahkan field.</p>
-                    </div>
-                </div>
-            <?php else: ?>
-                <!-- Empty State -->
-                <div class="card shadow mb-4">
-                    <div class="card-body text-center py-5">
-                        <i class="fas fa-clipboard-list fa-4x text-gray-300 mb-4"></i>
-                        <h4 class="text-gray-800">Pilih atau Buat Formulir</h4>
-                        <p class="text-muted mb-4">Silakan pilih formulir dari daftar di sebelah kiri atau klik tombol <strong>"Buat Form Baru"</strong> untuk memulai.</p>
-                        <a href="?page=oprec&create=1" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Buat Formulir Baru
-                        </a>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
+                        </div>
+                    <?php endif; ?>
+                </div>    </div>
 </div>
 
 <script>
