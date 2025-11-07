@@ -78,12 +78,22 @@
             <i class="fa-solid fa-trophy"></i>
             <span>Kompetisi</span></a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="Index.php ?page=kompetisi">
+        <i class="fas fa-user-graduate"></i>
+            <span>Beasiswa</span></a>
+    </li>
 
     <!-- Nav Item - Tables -->
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=absensi">
             <i class="fa-solid fa-calendar-check"></i>
             <span>Absensi</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="Index.php ?page=kegiatan">
+        <i class="fas fa-list"></i>
+            <span>Kegiatan</span></a>
     </li>
 
     <!-- Divider -->

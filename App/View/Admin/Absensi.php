@@ -1,6 +1,6 @@
 <?php
 include('Header.php');
-include('../SuperAdmin/FormData/TambahAbsen.php');
+include('../FormData/TambahAbsen.php');
 ?>
 <div class="container-fluid">
 

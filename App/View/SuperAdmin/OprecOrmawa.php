@@ -70,7 +70,7 @@ include('../SuperAdmin/Header.php');
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder Pro</h1>
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder</h1>
         <a href="?page=oprec&create=1" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> Buat Form Baru
         </a>
