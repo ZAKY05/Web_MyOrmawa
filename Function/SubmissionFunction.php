@@ -54,7 +54,7 @@ if (isset($_GET['action']) && ($_GET['action'] === 'approve_user_submissions' ||
         exit;
     }
 
-    // Update status untuk semua submission dari user_id untuk form_info_id tertentu
+    // Update status untuk *semua* submission dari user_id untuk form_info_id tertentu
     $update_query = "
         UPDATE submit s
         INNER JOIN form f ON s.form_id = f.id
