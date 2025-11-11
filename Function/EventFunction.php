@@ -1,24 +1,35 @@
 <?php
-// Fungsi untuk mendapatkan data event, dengan filter berdasarkan ormawa_id jika admin organisasi
+// Fungsi untuk mendapatkan data event, dengan filter berdasarkan user_id jika admin
 function getEventData($koneksi) {
-    // Cek apakah session aktif
-    if (!isset($_SESSION['user_id'])) {
+
+    if (!isset($_SESSION['user_id'], $_SESSION['user_level'])) {
         return [];
     }
 
     $user_level = $_SESSION['user_level'];
-    $ormawa_id = $_SESSION['ormawa_id'] ?? 0;
+    $base_query = "SELECT e.*, o.nama_ormawa 
+                   FROM event e 
+                   JOIN ormawa o ON e.ormawa_id = o.id";
 
-    if ($user_level === 1) {
-        // SuperAdmin: lihat semua event
-        $query = "SELECT e.*, o.nama_ormawa FROM event e JOIN ormawa o ON e.ormawa_id = o.id ORDER BY e.tgl_mulai DESC";
-        $stmt = mysqli_prepare($koneksi, $query);
-    } elseif ($user_level === 2) {
-        // Admin Ormawa: hanya lihat event milik ormawanya
-        $query = "SELECT e.*, o.nama_ormawa FROM event e JOIN ormawa o ON e.ormawa_id = o.id WHERE e.ormawa_id = ? ORDER BY e.tgl_mulai DESC";
+    if ($user_level == 2) {
+        // Admin Ormawa: hanya lihat event dari ormawanya
+        if (!isset($_SESSION['ormawa_id'])) {
+            return []; // Admin harus punya ormawa
+        }
+        $ormawa_id = (int)$_SESSION['ormawa_id'];
+        $query = $base_query . " WHERE e.ormawa_id = ? ORDER BY e.tgl_mulai DESC";
         $stmt = mysqli_prepare($koneksi, $query);
         mysqli_stmt_bind_param($stmt, "i", $ormawa_id);
+    } else if ($user_level == 1) {
+        // SuperAdmin: lihat semua event
+        $query = $base_query . " ORDER BY e.tgl_mulai DESC";
+        $stmt = mysqli_prepare($koneksi, $query);
     } else {
+        return [];
+    }
+
+    if (!$stmt) {
+        // Tambahkan logging error jika perlu
         return [];
     }
 
@@ -29,15 +40,18 @@ function getEventData($koneksi) {
     return $data;
 }
 
+
 // Fungsi untuk mendapatkan daftar ormawa
-function getOrmawaList($koneksi) {
+function getOrmawaList($koneksi)
+{
     $query = "SELECT id, nama_ormawa FROM ormawa ORDER BY nama_ormawa ASC";
     $result = mysqli_query($koneksi, $query);
     return $result ? mysqli_fetch_all($result, MYSQLI_ASSOC) : [];
 }
 
 // Fungsi untuk mendapatkan info ormawa admin (untuk tampilan)
-function getAdminOrmawaInfo($koneksi) {
+function getAdminOrmawaInfo($koneksi)
+{
     if (!isset($_SESSION['ormawa_id']) || !isset($_SESSION['ormawa_nama'])) {
         return null;
     }
@@ -48,7 +62,8 @@ function getAdminOrmawaInfo($koneksi) {
 }
 
 // Fungsi upload gambar (tidak diubah)
-function uploadGambar($file, $folder) {
+function uploadGambar($file, $folder)
+{
     $target_dir = "../../../Uploads/" . $folder . "/";
     if (!is_dir($target_dir)) {
         mkdir($target_dir, 0777, true);
@@ -64,7 +79,8 @@ function uploadGambar($file, $folder) {
 }
 
 // Fungsi handle operasi event
-function handleEventOperations($koneksi) {
+function handleEventOperations($koneksi)
+{
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
 
     if (!isset($_SESSION['user_id'])) {
@@ -128,7 +144,6 @@ function handleEventOperations($koneksi) {
             $_SESSION['msg_type'] = 'danger';
         }
         mysqli_stmt_close($stmt);
-
     } elseif ($action === 'edit') {
         $event_id = (int)($_POST['event_id'] ?? 0);
         if (!$event_id) {
@@ -151,18 +166,16 @@ function handleEventOperations($koneksi) {
             return;
         }
 
-        $event_ormawa_id = $event_data['ormawa_id'];
-
-        // Validasi akses
-        if ($user_level === 2 && $event_ormawa_id !== $ormawa_id_session) {
-            $_SESSION['message'] = 'Akses ditolak.';
+        // Validasi akses: Admin hanya boleh edit event dari ormawanya
+        if ($user_level === 2 && $event_data['ormawa_id'] != $ormawa_id_session) {
+            $_SESSION['message'] = 'Akses ditolak. Anda hanya dapat mengedit event dari organisasi Anda.';
             $_SESSION['msg_type'] = 'danger';
             return;
         }
 
         // Tentukan ormawa_id yang boleh diupdate
         if ($user_level === 1) {
-            $ormawa_id = (int)($_POST['ormawa_id'] ?? $event_ormawa_id);
+            $ormawa_id = (int)($_POST['ormawa_id'] ?? $event_data['ormawa_id']);
         } else {
             $ormawa_id = $ormawa_id_session; // Admin tidak boleh ganti ormawa
         }
@@ -204,7 +217,6 @@ function handleEventOperations($koneksi) {
             $_SESSION['msg_type'] = 'danger';
         }
         mysqli_stmt_close($stmt);
-
     } elseif ($action === 'hapus') {
         $event_id = (int)($_POST['event_id'] ?? 0);
         if (!$event_id) return;
@@ -218,9 +230,9 @@ function handleEventOperations($koneksi) {
 
         if (!$event_data) return;
 
-        // Validasi akses
-        if ($user_level === 2 && $event_data['ormawa_id'] !== $ormawa_id_session) {
-            $_SESSION['message'] = 'Akses ditolak.';
+        // Validasi akses: Admin hanya boleh hapus event dari ormawanya
+        if ($user_level === 2 && $event_data['ormawa_id'] != $ormawa_id_session) {
+            $_SESSION['message'] = 'Akses ditolak. Anda hanya dapat menghapus event dari organisasi Anda.';
             $_SESSION['msg_type'] = 'danger';
             return;
         }

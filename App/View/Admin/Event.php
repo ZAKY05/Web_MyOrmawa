@@ -1,6 +1,5 @@
 <?php
 // JANGAN panggil session_start() — sudah dipanggil di Index.php
-include('Header.php');
 include('../../../Config/ConnectDB.php');
 include('../../../Function/EventFunction.php');
 
@@ -12,6 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_level'] !== 2) {
 }
 
 handleEventOperations($koneksi);
+include('Header.php');
 
 // Ambil data
 $event_list = getEventData($koneksi);
@@ -146,7 +146,7 @@ $is_super_admin = ($_SESSION['user_level'] === 1);
                 <div class="modal-body">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="event_id" id="edit_event_id">
-                    <?php if (!$_SESSION['user_level'] === 1): ?>
+                    <?php if (isset($_SESSION['user_level']) && $_SESSION['user_level'] == 2): ?>
                         <input type="hidden" name="ormawa_id" value="<?php echo $_SESSION['ormawa_id']; ?>">
                         <div class="form-group">
                             <label>Ormawa</label>
