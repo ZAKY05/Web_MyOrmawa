@@ -107,6 +107,6 @@ $ormawa_list = getOrmawaData($koneksi);
 </div>
 <!-- /.container-fluid -->
 
-<?php include('FormData/TambahOrmawa.php'); ?>
+<?php include('../FormData/TambahOrmawa.php'); ?>
 <?php include('Footer.php'); ?>
 <?php mysqli_close($koneksi); ?>

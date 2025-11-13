@@ -23,7 +23,7 @@ $accounts = getAccountOrmawa($koneksi);
 
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Daftar Akun Ormawa</h1>
+        <h1 class="h3 mb-0 text-gray-800">Daftar Akun Anggota</h1>
         <button class="btn btn-success btn-icon-split" data-bs-toggle="modal" data-bs-target="#tambahAccountModal" onclick="resetAccountForm()">
             <span class="icon text-white-50">
                 <i class="fas fa-plus"></i>

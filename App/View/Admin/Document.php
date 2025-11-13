@@ -1,28 +1,67 @@
 <?php
+// Session sudah aktif (dari Index.php), jadi tidak perlu session_start()
+
 include('Header.php');
 include('../../../Config/ConnectDB.php');
 
-// Ambil dokumen lengkap dengan nama user dan nama ormawa
-$sql = "
-SELECT 
-    d.id,
-    d.nama_dokumen,
-    d.jenis_dokumen,
-    d.tanggal_upload,
-    d.file_path,
-    u.nama AS nama_user,
-    o.nama_ormawa
-FROM dokumen d
-LEFT JOIN user u ON d.id_user = u.id
-LEFT JOIN ormawa o ON d.id_ormawa = o.id
-ORDER BY d.tanggal_upload DESC;
-";
-$result = $koneksi->query($sql);
+$user_level = $_SESSION['user_level'] ?? 0;
+$ormawa_id = $_SESSION['ormawa_id'] ?? 0;
+
+// Query dengan filter berdasarkan level user
+if ($user_level === 1) {
+    // SuperAdmin: lihat semua dokumen
+    $sql = "
+        SELECT 
+            d.id,
+            d.nama_dokumen,
+            d.jenis_dokumen,
+            d.tanggal_upload,
+            d.file_path,
+            u.nama AS nama_user,
+            o.nama_ormawa
+        FROM dokumen d
+        LEFT JOIN user u ON d.id_user = u.id
+        LEFT JOIN ormawa o ON d.id_ormawa = o.id
+        ORDER BY d.tanggal_upload DESC
+    ";
+} elseif ($user_level === 2) {
+    // Admin Ormawa: hanya lihat dokumen milik ormawanya
+    $sql = "
+        SELECT 
+            d.id,
+            d.nama_dokumen,
+            d.jenis_dokumen,
+            d.tanggal_upload,
+            d.file_path,
+            u.nama AS nama_user,
+            o.nama_ormawa
+        FROM dokumen d
+        LEFT JOIN user u ON d.id_user = u.id
+        LEFT JOIN ormawa o ON d.id_ormawa = o.id
+        WHERE d.id_ormawa = ?
+        ORDER BY d.tanggal_upload DESC
+    ";
+    $stmt = mysqli_prepare($koneksi, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $ormawa_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    mysqli_stmt_close($stmt);
+} else {
+    $result = false;
+}
+
+// Jika SuperAdmin, jalankan query biasa
+if ($user_level === 1) {
+    $result = mysqli_query($koneksi, $sql);
+}
 ?>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-file-alt me-2"></i>Arsip Dokumen Anggota Ormawa</h2>
+        <h2>
+            <i class="fas fa-file-alt me-2"></i>
+            Arsip Dokumen <?php echo htmlspecialchars($_SESSION['ormawa_nama'] ?? 'Ormawa'); ?>
+        </h2>
         <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
             <i class="fas fa-plus me-1"></i> Tambah Dokumen
         </button>
@@ -33,12 +72,12 @@ $result = $koneksi->query($sql);
         <div class="col-md-6">
             <div class="input-group">
                 <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" id="searchInput" placeholder="Cari nama dokumen, user, atau ormawa...">
+                <input type="text" class="form-control" id="searchInput" placeholder="Cari dokumen...">
             </div>
         </div>
         <div class="col-md-3">
             <select class="form-select" id="filterJenis">
-                <option value="">Semua Jenis Dokumen</option>
+                <option value="">Semua Jenis</option>
                 <option value="Proposal">Proposal</option>
                 <option value="SPJ">SPJ</option>
                 <option value="LPJ">LPJ</option>
@@ -55,7 +94,7 @@ $result = $koneksi->query($sql);
                         <tr>
                             <th scope="col">#</th>
                             <th scope="col">User</th>
-                            <th scope="col">Ormawa</th>
+                            <?php if ($user_level === 1): ?><th scope="col">Ormawa</th><?php endif; ?>
                             <th scope="col">Jenis</th>
                             <th scope="col">Nama Dokumen</th>
                             <th scope="col">Tanggal</th>
@@ -63,12 +102,14 @@ $result = $koneksi->query($sql);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($result && $result->num_rows > 0): ?>
-                            <?php $no = 1; while ($row = $result->fetch_assoc()): ?>
+                        <?php if ($result && mysqli_num_rows($result) > 0): ?>
+                            <?php $no = 1; while ($row = mysqli_fetch_assoc($result)): ?>
                                 <tr>
                                     <th scope="row"><?= $no++ ?></th>
                                     <td><?= htmlspecialchars($row['nama_user'] ?? '–') ?></td>
-                                    <td><?= htmlspecialchars($row['nama_ormawa'] ?? '–') ?></td>
+                                    <?php if ($user_level === 1): ?>
+                                        <td><?= htmlspecialchars($row['nama_ormawa'] ?? '–') ?></td>
+                                    <?php endif; ?>
                                     <td>
                                         <span class="badge bg-<?= match ($row['jenis_dokumen']) {
                                             'Proposal' => 'primary',
@@ -82,17 +123,16 @@ $result = $koneksi->query($sql);
                                     <td>
                                         <!-- Unduh -->
                                         <a href="../../../uploads/dokumen/<?= urlencode($row['file_path']) ?>" 
-                                           class="btn btn-sm btn-success" title="Unduh dokumen">
+                                           class="btn btn-sm btn-success" title="Unduh">
                                             <i class="fas fa-download"></i>
                                         </a>
 
                                         <!-- Edit -->
-                                        <button class="btn btn-sm btn-warning" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#editModal"
+                                        <button class="btn btn-sm btn-warning edit-btn" 
                                             data-id="<?= $row['id'] ?>"
-                                            data-nama="<?= htmlspecialchars($row['nama_dokumen']) ?>"
-                                            data-jenis="<?= htmlspecialchars($row['jenis_dokumen']) ?>"
+                                            data-nama="<?= htmlspecialchars($row['nama_dokumen'], ENT_QUOTES); ?>"
+                                            data-jenis="<?= htmlspecialchars($row['jenis_dokumen'], ENT_QUOTES); ?>"
+                                            data-bs-toggle="modal" data-bs-target="#editModal"
                                             title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -109,7 +149,9 @@ $result = $koneksi->query($sql);
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted">Tidak ada dokumen.</td>
+                                <td colspan="<?= $user_level === 1 ? 7 : 6 ?>" class="text-center text-muted">
+                                    Tidak ada dokumen untuk <?php echo htmlspecialchars($_SESSION['ormawa_nama'] ?? 'ormawa ini'); ?>.
+                                </td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -122,20 +164,20 @@ $result = $koneksi->query($sql);
 <?php include('../FormData/TambahDocument.php'); ?>
 
 <!-- Modal Edit Dokumen -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel">
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="../../../Function/DocumentFunction.php" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit_id">
 
-                <!-- Ambil dari session atau hardcode sementara -->
-                <input type="hidden" name="id_ormawa" value="<?= $_SESSION['id_ormawa'] ?? 1 ?>">
-                <input type="hidden" name="id_user" value="<?= $_SESSION['id_user'] ?? $_SESSION['id'] ?? 1 ?>">
+                <!-- Gunakan session yang benar -->
+                <input type="hidden" name="id_ormawa" value="<?= $_SESSION['ormawa_id'] ?>">
+                <input type="hidden" name="id_user" value="<?= $_SESSION['user_id'] ?>">
 
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Dokumen</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -158,7 +200,7 @@ $result = $koneksi->query($sql);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-warning">Simpan</button>
+                    <button type="submit" class="btn btn-warning">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
@@ -182,3 +224,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php include('Footer.php'); ?>
+<?php mysqli_close($koneksi); ?>
