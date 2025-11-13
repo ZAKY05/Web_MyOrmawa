@@ -12,21 +12,21 @@
                 <div class="modal-body">
                     <input type="hidden" name="action" value="tambah">
                     <?php
-                    // Jika admin organisasi, sembunyikan dropdown dan gunakan hidden input
-                    if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin_organisasi' && $admin_ormawa_info):
+                    // Jika admin organisasi (level 2), sembunyikan dropdown dan gunakan hidden input
+                    if (isset($_SESSION['user_level']) && $_SESSION['user_level'] == 2):
                     ?>
-                        <input type="hidden" name="ormawa_id" value="<?php echo $admin_ormawa_info['id']; ?>">
+                        <input type="hidden" name="ormawa_id" value="<?php echo $_SESSION['ormawa_id']; ?>">
                         <div class="form-group">
                             <label>Ormawa Penyelenggara</label>
-                            <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin_ormawa_info['nama_ormawa']); ?>" readonly>
+                            <input type="text" class="form-control" value="<?php echo htmlspecialchars($_SESSION['ormawa_nama']); ?>" readonly>
                         </div>
-                    <?php else: // Jika SuperAdmin, tampilkan dropdown ?>
+                    <?php else: // Jika SuperAdmin (atau level lain), tampilkan dropdown ?>
                         <div class="form-group">
                             <label for="ormawa_id">Ormawa Penyelenggara</label>
                             <select class="form-control" id="ormawa_id" name="ormawa_id" required>
                                 <option value="">Pilih Ormawa</option>
                                 <?php
-                                foreach ($all_ormawa_list as $ormawa): // Gunakan $all_ormawa_list
+                                foreach ($all_ormawa_list as $ormawa):
                                 ?>
                                     <option value="<?php echo $ormawa['id']; ?>"><?php echo htmlspecialchars($ormawa['nama_ormawa']); ?></option>
                                 <?php endforeach; ?>

@@ -1,8 +1,4 @@
 <?php
-ob_start();
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
 include('../../../Config/ConnectDB.php');
 include('../../../Function/EventFunction.php');
 handleEventOperations($koneksi); // Proses operasi tambah/edit/hapus

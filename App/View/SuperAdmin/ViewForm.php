@@ -40,7 +40,7 @@ $submission_error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // GANTI INI DENGAN LOGIKA PENGECEKAN SESI PENGGUNA YANG SEBENARNYA
     // Contoh sederhana (asumsi user_id 999 untuk pengguna biasa):
-    $current_user_id = 999; // Gantilah dengan cara Anda mendapatkan user_id yang login
+    $current_user_id = 7; // Gantilah dengan cara Anda mendapatkan user_id yang login
 
     if ($current_user_id <= 0) {
         $submission_error = "Anda harus login untuk mengisi formulir ini.";
