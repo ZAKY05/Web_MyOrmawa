@@ -1,8 +1,9 @@
 <?php
+
+include('../SuperAdmin/Header.php'); // Ganti dengan path header untuk Admin Organisasi jika berbeda
 include('../../../Config/ConnectDB.php');
 include('../../../Function/EventFunction.php');
 handleEventOperations($koneksi); // Proses operasi tambah/edit/hapus
-include('../SuperAdmin/Header.php'); // Ganti dengan path header untuk Admin Organisasi jika berbeda
 
 // Ambil informasi ormawa admin jika login sebagai admin organisasi
 $admin_ormawa_info = getAdminOrmawaInfo($koneksi);
@@ -22,7 +23,7 @@ $all_ormawa_list = getOrmawaList($koneksi);
                 <i class="fas fa-plus fa-sm"></i> Tambah Event
             </button>
             <!-- Hanya tampilkan tombol generate jika SuperAdmin -->
-            <?php if (isset($_SESSION['user_level']) && $_SESSION['user_level'] == 1): ?>
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin'): ?>
             <button type="button" class="btn btn-success btn-sm" id="generateSampleEvents">
                 <i class="fas fa-database fa-sm"></i> Generate Sample Data
             </button>
@@ -124,12 +125,7 @@ $all_ormawa_list = getOrmawaList($koneksi);
                             <tr>
                                 <td><?php echo $no++; ?></td>
                                 <td><img src="<?php echo $image_src; ?>" alt="Gambar <?php echo htmlspecialchars($event['nama_event']); ?>" width="50" height="50" class="img-thumbnail"></td>
-                                <td>
-                                    <?php echo htmlspecialchars($event['nama_event']); ?>
-                                    <?php if (isset($event['pembuat_nama'])): ?>
-                                        <small class="text-muted d-block">oleh: <?php echo htmlspecialchars($event['pembuat_nama']); ?></small>
-                                    <?php endif; ?>
-                                </td>
+                                <td><?php echo htmlspecialchars($event['nama_event']); ?></td>
                                 <td><?php echo htmlspecialchars($event['nama_ormawa']); ?></td>
                                 <td><?php echo $event['tgl_mulai']; ?> s/d <?php echo $event['tgl_selesai']; ?></td>
                                 <td><?php echo htmlspecialchars($event['lokasi']); ?></td>
@@ -203,7 +199,7 @@ $all_ormawa_list = getOrmawaList($koneksi);
                     <input type="hidden" name="event_id" id="edit_event_id">
                     <?php
                     // Jika admin organisasi, sembunyikan dropdown dan gunakan hidden input
-                    if (isset($_SESSION['user_level']) && $_SESSION['user_level'] == 2 && isset($admin_ormawa_info)):
+                    if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin_organisasi' && $admin_ormawa_info):
                     ?>
                         <input type="hidden" name="ormawa_id" id="edit_ormawa_id_hidden" value="<?php echo $admin_ormawa_info['id']; ?>">
                         <div class="form-group">

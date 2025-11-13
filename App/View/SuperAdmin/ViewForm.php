@@ -1,4 +1,6 @@
 <?php
+session_start(); // Langkah 1: Mulai sesi di awal
+
 include '../../../Config/ConnectDB.php'; // Sesuaikan path ke ConnectDB.php
 include '../SuperAdmin/Header.php'; // Header untuk pengguna biasa (sesuaikan path)
 
@@ -38,108 +40,126 @@ $submission_success = false;
 $submission_error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // GANTI INI DENGAN LOGIKA PENGECEKAN SESI PENGGUNA YANG SEBENARNYA
-    // Contoh sederhana (asumsi user_id 999 untuk pengguna biasa):
-    $current_user_id = 7; // Gantilah dengan cara Anda mendapatkan user_id yang login
+    // Langkah 2: Ganti logika pengecekan sesi dan pengambilan user_id
+    // Asumsi: saat login, Anda menyimpan ID pengguna di $_SESSION['user_id']
+    $current_user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
 
     if ($current_user_id <= 0) {
+        // Opsional: Redirect ke halaman login jika tidak login
+        // header("Location: login.php"); // Sesuaikan dengan halaman login Anda
+        // exit();
         $submission_error = "Anda harus login untuk mengisi formulir ini.";
     } else {
-        $koneksi->autocommit(FALSE); // Mulai transaksi
-        $error_occurred = false;
-        $stmt_insert = $koneksi->prepare("INSERT INTO submit (form_id, user_id, field_name, field_value, created_at, submitted_at) VALUES (?, ?, ?, ?, NOW(), NOW())");
+        // Pastikan user_id benar-benar valid (opsional: cek ke database)
+        // Misalnya, pastikan user_id ini aktif dan sesuai harapan
+        // $check_user_query = "SELECT id FROM users WHERE id = ? AND status = 'active' LIMIT 1";
+        // $check_stmt = $koneksi->prepare($check_user_query);
+        // $check_stmt->bind_param("i", $current_user_id);
+        // $check_stmt->execute();
+        // $user_exists = $check_stmt->get_result()->num_rows > 0;
+        // $check_stmt->close();
+        // if (!$user_exists) {
+        //     $submission_error = "Sesi pengguna tidak valid.";
+        //     $current_user_id = 0; // Reset jika tidak valid
+        // }
 
-        if (!$stmt_insert) {
-            $submission_error = "Kesalahan internal: " . $koneksi->error;
-            $error_occurred = true;
-        } else {
-            foreach ($form_fields as $field) {
-                $field_name = $field['nama'];
-                $field_type = $field['tipe'];
-                $field_id = $field['id'];
+        if ($current_user_id > 0) { // Cek ulang setelah validasi opsional
+            $koneksi->autocommit(FALSE); // Mulai transaksi
+            $error_occurred = false;
+            $stmt_insert = $koneksi->prepare("INSERT INTO submit (form_id, user_id, field_name, field_value, created_at, submitted_at) VALUES (?, ?, ?, ?, NOW(), NOW())");
 
-                // Ambil nilai dari POST
-                $field_value = '';
-                if ($field_type === 'checkbox' || $field_type === 'radio' || $field_type === 'select') {
-                    // Untuk radio/checkbox/select, nilai biasanya string tunggal
-                    $field_value = $_POST[$field_name] ?? '';
-                    // Validasi opsi (opsional tapi dianjurkan)
-                    if ($field_value !== '') {
-                        $options = json_decode($field['opsi'], true);
-                        if (is_array($options) && !in_array($field_value, $options)) {
-                             $submission_error = "Nilai untuk field '" . htmlspecialchars($field['label']) . "' tidak valid.";
-                             $error_occurred = true;
-                             break; // Hentikan loop jika error
-                        }
-                    }
-                } else {
-                    // Untuk text, email, number, textarea, file
-                    $field_value = trim($_POST[$field_name] ?? '');
+            if (!$stmt_insert) {
+                $submission_error = "Kesalahan internal: " . $koneksi->error;
+                $error_occurred = true;
+            } else {
+                foreach ($form_fields as $field) {
+                    $field_name = $field['nama'];
+                    $field_type = $field['tipe'];
+                    $field_id = $field['id'];
 
-                    // Validasi file upload jika tipe field adalah 'file'
-                    if ($field_type === 'file') {
-                        if (isset($_FILES[$field_name]) && $_FILES[$field_name]['error'] === UPLOAD_ERR_OK) {
-                            $upload_dir = "../../../uploads/submissions/"; // Buat folder ini dan pastikan dapat ditulis
-                            if (!is_dir($upload_dir)) {
-                                mkdir($upload_dir, 0755, true); // Buat folder jika belum ada
+                    // Ambil nilai dari POST
+                    $field_value = '';
+                    if ($field_type === 'checkbox' || $field_type === 'radio' || $field_type === 'select') {
+                        // Untuk radio/checkbox/select, nilai biasanya string tunggal
+                        $field_value = $_POST[$field_name] ?? '';
+                        // Validasi opsi (opsional tapi dianjurkan)
+                        if ($field_value !== '') {
+                            $options = json_decode($field['opsi'], true);
+                            if (is_array($options) && !in_array($field_value, $options)) {
+                                 $submission_error = "Nilai untuk field '" . htmlspecialchars($field['label']) . "' tidak valid.";
+                                 $error_occurred = true;
+                                 break; // Hentikan loop jika error
                             }
-                            $file_name = uniqid() . '_' . basename($_FILES[$field_name]['name']);
-                            $target_file = $upload_dir . $file_name;
+                        }
+                    } else {
+                        // Untuk text, email, number, textarea, file
+                        $field_value = trim($_POST[$field_name] ?? '');
 
-                            // Validasi tipe file dan ukuran (contoh sederhana)
-                            $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']; // Tambahkan sesuai kebutuhan
-                            $file_ext = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-                            if (in_array($file_ext, $allowed_types) && $_FILES[$field_name]['size'] <= 5000000) { // Max 5MB
-                                if (move_uploaded_file($_FILES[$field_name]['tmp_name'], $target_file)) {
-                                    $field_value = $file_name; // Simpan nama file ke database
+                        // Validasi file upload jika tipe field adalah 'file'
+                        if ($field_type === 'file') {
+                            if (isset($_FILES[$field_name]) && $_FILES[$field_name]['error'] === UPLOAD_ERR_OK) {
+                                $upload_dir = "../../../uploads/submissions/"; // Buat folder ini dan pastikan dapat ditulis
+                                if (!is_dir($upload_dir)) {
+                                    mkdir($upload_dir, 0755, true); // Buat folder jika belum ada
+                                }
+                                $file_name = uniqid() . '_' . basename($_FILES[$field_name]['name']);
+                                $target_file = $upload_dir . $file_name;
+
+                                // Validasi tipe file dan ukuran (contoh sederhana)
+                                $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']; // Tambahkan sesuai kebutuhan
+                                $file_ext = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+                                if (in_array($file_ext, $allowed_types) && $_FILES[$field_name]['size'] <= 5000000) { // Max 5MB
+                                    if (move_uploaded_file($_FILES[$field_name]['tmp_name'], $target_file)) {
+                                        $field_value = $file_name; // Simpan nama file ke database
+                                    } else {
+                                        $submission_error = "Gagal mengupload file untuk '" . htmlspecialchars($field['label']) . "'.";
+                                        $error_occurred = true;
+                                        break; // Hentikan loop jika error upload
+                                    }
                                 } else {
-                                    $submission_error = "Gagal mengupload file untuk '" . htmlspecialchars($field['label']) . "'.";
+                                    $submission_error = "File untuk '" . htmlspecialchars($field['label']) . "' tidak valid (tipe/ukuran).";
                                     $error_occurred = true;
-                                    break; // Hentikan loop jika error upload
+                                    break; // Hentikan loop jika error validasi
                                 }
                             } else {
-                                $submission_error = "File untuk '" . htmlspecialchars($field['label']) . "' tidak valid (tipe/ukuran).";
-                                $error_occurred = true;
-                                break; // Hentikan loop jika error validasi
+                                 // Jika field file kosong atau error upload
+                                 if (isset($_FILES[$field_name]) && $_FILES[$field_name]['error'] !== UPLOAD_ERR_NO_FILE) {
+                                     $submission_error = "Error upload file untuk '" . htmlspecialchars($field['label']) . "'.";
+                                     $error_occurred = true;
+                                     break;
+                                 }
+                                 // Jika file tidak wajib, biarkan $field_value kosong
                             }
-                        } else {
-                             // Jika field file kosong atau error upload
-                             if (isset($_FILES[$field_name]) && $_FILES[$field_name]['error'] !== UPLOAD_ERR_NO_FILE) {
-                                 $submission_error = "Error upload file untuk '" . htmlspecialchars($field['label']) . "'.";
-                                 $error_occurred = true;
-                                 break;
-                             }
-                             // Jika file tidak wajib, biarkan $field_value kosong
+                        }
+                    }
+
+                    // Validasi wajib diisi (hanya contoh dasar, validasi sebenarnya bisa lebih kompleks)
+                    if (empty($field_value) && $field_type !== 'file') { // Asumsikan file tidak wajib untuk sekarang
+                         // Tambahkan logika validasi wajib diisi jika diperlukan
+                         // Misalnya, cek dari metadata tambahan di tabel form jika ada
+                         // Untuk sekarang, kita lanjutkan tanpa validasi wajib
+                     }
+
+
+                    if (!$error_occurred) {
+                        $stmt_insert->bind_param("iiss", $field_id, $current_user_id, $field_name, $field_value);
+                        if (!$stmt_insert->execute()) {
+                            $submission_error = "Gagal menyimpan jawaban untuk '" . htmlspecialchars($field['label']) . "'.";
+                            $error_occurred = true;
+                            break; // Hentikan loop jika error insert
                         }
                     }
                 }
-
-                // Validasi wajib diisi (hanya contoh dasar, validasi sebenarnya bisa lebih kompleks)
-                if (empty($field_value) && $field_type !== 'file') { // Asumsikan file tidak wajib untuk sekarang
-                     // Tambahkan logika validasi wajib diisi jika diperlukan
-                     // Misalnya, cek dari metadata tambahan di tabel `form` jika ada
-                     // Untuk sekarang, kita lanjutkan tanpa validasi wajib
-                 }
-
-
-                if (!$error_occurred) {
-                    $stmt_insert->bind_param("iiss", $field_id, $current_user_id, $field_name, $field_value);
-                    if (!$stmt_insert->execute()) {
-                        $submission_error = "Gagal menyimpan jawaban untuk '" . htmlspecialchars($field['label']) . "'.";
-                        $error_occurred = true;
-                        break; // Hentikan loop jika error insert
-                    }
-                }
+                $stmt_insert->close();
             }
-            $stmt_insert->close();
-        }
 
-        if (!$error_occurred) {
-            $koneksi->commit();
-            $submission_success = true;
-        } else {
-            $koneksi->rollback();
-            // Tidak perlu set $submission_error lagi karena sudah diisi di loop
+            if (!$error_occurred) {
+                $koneksi->commit();
+                $submission_success = true;
+            } else {
+                $koneksi->rollback();
+                // Tidak perlu set $submission_error lagi karena sudah diisi di loop
+            }
         }
     }
 }
