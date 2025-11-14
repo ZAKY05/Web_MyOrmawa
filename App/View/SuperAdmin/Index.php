@@ -1,7 +1,7 @@
 <?php
 include('../SuperAdmin/Header.php');
 include('../SuperAdmin/Route.php');
-session_start();
+
 ?>
 
 <body id="page-top">

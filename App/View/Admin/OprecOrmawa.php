@@ -3,8 +3,26 @@ include '../../../Config/ConnectDB.php';
 
 $active_form_id = isset($_GET['form_id']) ? (int)$_GET['form_id'] : 0;
 $show_create_form = isset($_GET['create']) && $_GET['create'] == '1';
+$view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_submissions'] : 0;
 
-$forms_result = mysqli_query($koneksi, "SELECT id, judul, deskripsi, gambar FROM form_info ORDER BY created_at DESC");
+include '../SuperAdmin/ViewSubmissions.php';
+
+$query = "
+    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, fi.user_id, u.nama as pembuat_nama
+    FROM form_info fi
+    LEFT JOIN user u ON fi.user_id = u.id
+";
+$where_clauses = ["fi.jenis_form = 'anggota'"];
+
+if (isset($_SESSION['user_level']) && $_SESSION['user_level'] == 2) {
+    $current_user_id = (int)$_SESSION['user_id'];
+    $where_clauses[] = "fi.user_id = $current_user_id";
+}
+
+$query .= " WHERE " . implode(' AND ', $where_clauses);
+$query .= " ORDER BY fi.created_at DESC";
+
+$forms_result = mysqli_query($koneksi, $query);
 $all_forms = [];
 while ($row = mysqli_fetch_assoc($forms_result)) {
     $all_forms[] = $row;
@@ -13,12 +31,21 @@ while ($row = mysqli_fetch_assoc($forms_result)) {
 $form_detail = null;
 $form_fields = [];
 if ($active_form_id > 0) {
-    $form_detail_query = "SELECT id, judul, deskripsi, gambar FROM form_info WHERE id = ?";
+    $form_detail_query = "SELECT id, judul, deskripsi, gambar, user_id FROM form_info WHERE id = ?";
     $stmt = $koneksi->prepare($form_detail_query);
     $stmt->bind_param("i", $active_form_id);
     $stmt->execute();
     $form_detail = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+
+    // Validasi RBAC untuk Admin Level 2
+    if ($form_detail && isset($_SESSION['user_level']) && $_SESSION['user_level'] == 2) {
+        if ($form_detail['user_id'] != $_SESSION['user_id']) {
+            // Jika form ini bukan milik admin yang sedang login, redirect
+            header('Location: ?page=oprec&error=unauthorized_access');
+            exit;
+        }
+    }
 
     if ($form_detail) {
         $fields_query = "SELECT id, nama, tipe, label, opsi FROM form WHERE form_info_id = ? ORDER BY id ASC";
@@ -200,19 +227,28 @@ include('../SuperAdmin/Header.php');
                                             <?php if ($active_form_id == $form['id']): ?>
                                                 <span class="badge badge-success badge-sm ml-1">Aktif</span>
                                             <?php endif; ?>
+                                            <small class="text-muted d-block">oleh <?= htmlspecialchars($form['pembuat_nama']) ?></small>
                                             <p class="text-muted small mb-0 mt-1">
                                                 <?= htmlspecialchars(substr($form['deskripsi'], 0, 60)) . (strlen($form['deskripsi']) > 60 ? '...' : '') ?>
                                             </p>
                                         </div>
                                         <div class="ml-2">
+                                            <a href="../Superadmin/ViewForm.php?form_info_id=<?= $form['id'] ?>" class="btn btn-success btn-sm btn-circle" title="Isi Formulir" target="_blank">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                            <?php if (isset($_SESSION['user_level']) && ($_SESSION['user_level'] == 1 || ($_SESSION['user_level'] == 2 && $form['user_id'] == $_SESSION['user_id']))): ?>
                                             <a href="?page=oprec&form_id=<?= $form['id'] ?>" class="btn btn-info btn-sm btn-circle" title="Edit">
                                                 <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="?page=oprec&view_submissions=<?= $form['id'] ?>" class="btn btn-warning btn-sm btn-circle" title="Lihat Submissions">
+                                                <i class="fas fa-users"></i>
                                             </a>
                                             <button class="btn btn-danger btn-sm btn-circle" title="Hapus" 
                                                     data-toggle="modal" 
                                                     data-target="#deleteFormModal<?= $form['id'] ?>">
                                                 <i class="fas fa-trash"></i>
                                             </button>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -299,7 +335,10 @@ include('../SuperAdmin/Header.php');
 
         <!-- Kolom Kanan: Tambah Field & Preview -->
         <div class="col-xl-8 col-lg-7">
-            <?php if ($active_form_id > 0 && $form_detail): ?>
+            <?php if ($view_submissions_form_id > 0): ?>
+                <!-- Tampilkan komponen submissions -->
+                <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id); ?>
+            <?php elseif ($active_form_id > 0 && $form_detail): ?>
                 <div class="row">
                     <!-- Tambah Field -->
                     <div class="col-lg-6 mb-4">

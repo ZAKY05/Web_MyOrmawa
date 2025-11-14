@@ -3,17 +3,16 @@ include '../../../Config/ConnectDB.php';
 
 $active_form_id = isset($_GET['form_id']) ? (int)$_GET['form_id'] : 0;
 $show_create_form = isset($_GET['create']) && $_GET['create'] == '1';
-// Tambahkan variabel untuk melihat submissions
 $view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_submissions'] : 0;
 
-// Include komponen submissions
 include '../SuperAdmin/ViewSubmissions.php';
 
-// --- PERUBAHAN: Query JOIN untuk mengambil nama pembuat ---
+// --- PERUBAHAN: Query difilter untuk jenis_form = 'anggota' ---
 $forms_result = mysqli_query($koneksi, "
     SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, u.nama as pembuat_nama
     FROM form_info fi
     JOIN user u ON fi.user_id = u.id
+    WHERE fi.jenis_form = 'anggota'
     ORDER BY fi.created_at DESC
 ");
 $all_forms = [];
@@ -25,7 +24,8 @@ while ($row = mysqli_fetch_assoc($forms_result)) {
 $form_detail = null;
 $form_fields = [];
 if ($active_form_id > 0) {
-    $form_detail_query = "SELECT id, judul, deskripsi, gambar FROM form_info WHERE id = ?";
+    // --- PERUBAHAN: Pastikan form yang di-load adalah tipe 'anggota' ---
+    $form_detail_query = "SELECT id, judul, deskripsi, gambar FROM form_info WHERE id = ? AND jenis_form = 'anggota'";
     $stmt = $koneksi->prepare($form_detail_query);
     $stmt->bind_param("i", $active_form_id);
     $stmt->execute();
@@ -48,6 +48,7 @@ if ($active_form_id > 0) {
 }
 
 $submissionCount = 0;
+// --- PERUBAHAN: Hitung submission hanya untuk form 'anggota' ---
 if ($active_form_id > 0) {
     $countQuery = "SELECT COUNT(DISTINCT user_id) as total FROM submit WHERE form_id IN (SELECT id FROM form WHERE form_info_id = ?)";
     $stmt = $koneksi->prepare($countQuery);
@@ -58,11 +59,16 @@ if ($active_form_id > 0) {
     $submissionCount = $submissionCountRow['total'] ?? 0;
     $stmt->close();
 } else {
-    $countQuery = "SELECT COUNT(DISTINCT user_id) as total FROM submit";
+    $countQuery = "SELECT COUNT(DISTINCT s.user_id) as total 
+                   FROM submit s
+                   JOIN form f ON s.form_id = f.id
+                   JOIN form_info fi ON f.form_info_id = fi.id
+                   WHERE fi.jenis_form = 'anggota'";
     $countResult = mysqli_query($koneksi, $countQuery);
     $submissionCountRow = mysqli_fetch_assoc($countResult);
     $submissionCount = $submissionCountRow['total'] ?? 0;
 }
+// --- SAMPAI SINI ---
 
 include('../SuperAdmin/Header.php');
 ?>
@@ -70,9 +76,9 @@ include('../SuperAdmin/Header.php');
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder</h1>
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-users-cog"></i> Form Builder (Anggota)</h1>
         <a href="?page=oprec&create=1" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Buat Form Baru
+            <i class="fas fa-plus fa-sm text-white-50"></i> Buat Form Anggota Baru
         </a>
     </div>
 
@@ -136,7 +142,7 @@ include('../SuperAdmin/Header.php');
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Formulir</div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Formulir Anggota</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800"><?= count($all_forms) ?></div>
                         </div>
                         <div class="col-auto">
@@ -188,7 +194,7 @@ include('../SuperAdmin/Header.php');
             <!-- Daftar Semua Formulir -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Daftar Formulir</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Daftar Formulir Anggota</h6>
                     <a href="?page=oprec&create=1" class="btn btn-primary btn-sm btn-circle" title="Buat Form Baru">
                         <i class="fas fa-plus"></i>
                     </a>
@@ -197,9 +203,9 @@ include('../SuperAdmin/Header.php');
                     <?php if (empty($all_forms)): ?>
                         <div class="text-center text-muted py-5">
                             <i class="fas fa-inbox fa-3x mb-3"></i>
-                            <p class="mb-2">Belum ada formulir</p>
+                            <p class="mb-2">Belum ada formulir anggota</p>
                             <a href="?page=oprec&create=1" class="btn btn-sm btn-primary">
-                                <i class="fas fa-plus"></i> Buat Formulir Pertama
+                                <i class="fas fa-plus"></i> Buat Formulir Anggota
                             </a>
                         </div>
                     <?php else: ?>
@@ -214,9 +220,7 @@ include('../SuperAdmin/Header.php');
                                             <?php if ($active_form_id == $form['id']): ?>
                                                 <span class="badge badge-success badge-sm ml-1">Aktif</span>
                                             <?php endif; ?>
-                                            <!-- --- PERUBAHAN: Tampilkan nama pembuat --- -->
                                             <small class="text-muted d-block">oleh <?= htmlspecialchars($form['pembuat_nama']) ?></small>
-                                            <!-- --- SAMPAI SINI --- -->
                                             <p class="text-muted small mb-0 mt-1">
                                                 <?= htmlspecialchars(substr($form['deskripsi'], 0, 60)) . (strlen($form['deskripsi']) > 60 ? '...' : '') ?>
                                             </p>
@@ -225,11 +229,9 @@ include('../SuperAdmin/Header.php');
                                             <a href="?page=oprec&form_id=<?= $form['id'] ?>" class="btn btn-info btn-sm btn-circle" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <!-- Tombol Baru: Isi Formulir -->
                                             <a href="../Superadmin/ViewForm.php?form_info_id=<?= $form['id'] ?>" class="btn btn-success btn-sm btn-circle" title="Isi Formulir" target="_blank">
                                                 <i class="fas fa-external-link-alt"></i>
                                             </a>
-                                            <!-- Tombol Baru: Lihat Submissions -->
                                             <a href="?page=oprec&view_submissions=<?= $form['id'] ?>" class="btn btn-warning btn-sm btn-circle" title="Lihat Submissions">
                                                 <i class="fas fa-users"></i>
                                             </a>
@@ -277,7 +279,7 @@ include('../SuperAdmin/Header.php');
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex justify-content-between align-items-center">
                         <h6 class="m-0 font-weight-bold text-primary">
-                            <?= $active_form_id > 0 && $form_detail ? 'Edit Formulir' : 'Buat Formulir Baru' ?>
+                            <?= $active_form_id > 0 && $form_detail ? 'Edit Formulir Anggota' : 'Buat Formulir Anggota Baru' ?>
                         </h6>
                         <a href="?page=oprec" class="btn btn-sm btn-secondary btn-circle" title="Tutup">
                             <i class="fas fa-times"></i>
@@ -286,6 +288,8 @@ include('../SuperAdmin/Header.php');
                     <div class="card-body">
                         <form method="POST" action="../../../Function/FormFunction.php" enctype="multipart/form-data">
                             <input type="hidden" name="action" value="<?= $active_form_id > 0 ? 'update_form_info' : 'create_form_info' ?>">
+                            <!-- --- PERUBAHAN: Tambahkan hidden input untuk jenis_form --- -->
+                            <input type="hidden" name="jenis_form" value="anggota">
                             <?php if ($active_form_id > 0): ?>
                                 <input type="hidden" name="form_info_id" value="<?= $active_form_id ?>">
                             <?php endif; ?>
