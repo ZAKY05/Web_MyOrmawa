@@ -6,6 +6,7 @@ $routes = [
     'event' => 'Event.php',
     'kegiatan' => 'Kegiatan.php',
     'oprec'=>'OprecOrmawa.php',
+    'oprec-event' => 'OprecEvent.php',
     'doc'=>'Document.php',
     'anggota'=>'Anggota.php',
     'account'=>'Account.php',
