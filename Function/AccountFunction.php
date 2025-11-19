@@ -3,7 +3,7 @@ include '../Config/ConnectDB.php';
 
 // --- FUNGSI: Menambah Akun Ormawa ---
 if (isset($_POST['action']) && $_POST['action'] === 'add') {
-    $nama     = trim($_POST['nama'] ?? '');
+    $nama     = trim($_POST['full_name'] ?? '');
     $nim      = trim($_POST['nim'] ?? '');
     $username = trim($_POST['username'] ?? '');
     $email    = trim($_POST['email'] ?? '');
@@ -36,7 +36,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add') {
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
     // Simpan ke database dengan level = 2 (Ormawa)
-    $stmt = $koneksi->prepare("INSERT INTO user (nama, nim, username, email, password, level) VALUES (?, ?, ?, ?, ?, 2)");
+    $stmt = $koneksi->prepare("INSERT INTO user (full_name, nim, username, email, password, level) VALUES (?, ?, ?, ?, ?, 2)");
     if ($stmt) {
         $stmt->bind_param("sssss", $nama, $nim, $username, $email, $password_hash);
         $stmt->execute();
@@ -54,7 +54,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add') {
 // --- FUNGSI: Memperbarui Akun Ormawa ---
 if (isset($_POST['action']) && $_POST['action'] === 'edit') {
     $id       = (int)($_POST['id'] ?? 0);
-    $nama     = trim($_POST['nama'] ?? '');
+    $nama     = trim($_POST['full_name'] ?? '');
     $nim      = trim($_POST['nim'] ?? '');
     $username = trim($_POST['username'] ?? '');
     $email    = trim($_POST['email'] ?? '');
@@ -100,10 +100,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'edit') {
     // Update password hanya jika diisi
     if (!empty($password)) {
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $koneksi->prepare("UPDATE user SET nama = ?, nim = ?, username = ?, email = ?, password = ? WHERE id = ?");
+        $stmt = $koneksi->prepare("UPDATE user SET full_name = ?, nim = ?, username = ?, email = ?, password = ? WHERE id = ?");
         $stmt->bind_param("sssssi", $nama, $nim, $username, $email, $password_hash, $id);
     } else {
-        $stmt = $koneksi->prepare("UPDATE user SET nama = ?, nim = ?, username = ?, email = ? WHERE id = ?");
+        $stmt = $koneksi->prepare("UPDATE user SET full_name
+         = ?, nim = ?, username = ?, email = ? WHERE id = ?");
         $stmt->bind_param("ssssi", $nama, $nim, $username, $email, $id);
     }
 

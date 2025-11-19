@@ -3,10 +3,10 @@ include('Header.php');
 include('../../../Config/ConnectDB.php');
 
 
-$stmt = mysqli_prepare($koneksi, "SELECT * FROM kompetisi ORDER BY created_at DESC");
+$stmt = mysqli_prepare($koneksi, "SELECT * FROM beasiswa ORDER BY created_at DESC");
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
-$kompetisi_list = mysqli_fetch_all($result, MYSQLI_ASSOC);
+$beasiswa_list = mysqli_fetch_all($result, MYSQLI_ASSOC);
 mysqli_stmt_close($stmt);
 ?>
 
@@ -14,24 +14,24 @@ mysqli_stmt_close($stmt);
 
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Manajemen Kompetisi</h1>
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#tambahKompetisiModal">
-            <i class="fas fa-plus fa-sm"></i> Tambah Kompetisi
+        <h1 class="h3 mb-0 text-gray-800">Manajemen Beasiswa</h1>
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#tambahBeasiswaModal">
+            <i class="fas fa-plus fa-sm"></i> Tambah Beasiswa
         </button>
     </div>
 
     <!-- Data Kompetisi Table -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Daftar Kompetisi</h6>
+            <h6 class="m-0 font-weight-bold text-primary">Daftar Beasiswa</h6>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered" id="dataTableKompetisi" width="100%" cellspacing="0">
+                <table class="table table-bordered" id="dataTableBeasiswa" width="100%" cellspacing="0">
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Nama Kompetisi</th>
+                            <th>Nama Beasiswa</th>
                             <th>Penyelenggara</th>
                             <th>Periode</th>
                             <th>Deadline</th>
@@ -39,27 +39,27 @@ mysqli_stmt_close($stmt);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (!empty($kompetisi_list)): ?>
-                            <?php $no = 1; foreach ($kompetisi_list as $k): ?>
+                        <?php if (!empty($beasiswa_list)): ?>
+                            <?php $no = 1; foreach ($beasiswa_list as $b): ?>
                                 <tr>
                                     <td><?= $no++; ?></td>
-                                    <td><?= htmlspecialchars($k['nama_kompetisi']); ?></td>
-                                    <td><?= htmlspecialchars($k['penyelenggara']); ?></td>
-                                    <td><?= htmlspecialchars($k['periode'] ?? '–'); ?></td>
-                                    <td><?= $k['deadline'] ? date('d M Y', strtotime($k['deadline'])) : '–'; ?></td>
+                                    <td><?= htmlspecialchars($b['nama_beasiswa']); ?></td>
+                                    <td><?= htmlspecialchars($b['penyelenggara']); ?></td>
+                                    <td><?= htmlspecialchars($b['periode'] ?? '–'); ?></td>
+                                    <td><?= $b['deadline'] ? date('d M Y', strtotime($b['deadline'])) : '–'; ?></td>
                                     <td>
                                         <!-- Detail -->
                                         <button class="btn btn-info btn-sm" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#detailModal"
-                                                data-id="<?= $k['id']; ?>"
-                                                data-nama="<?= htmlspecialchars($k['nama_kompetisi'], ENT_QUOTES); ?>"
-                                                data-penyelenggara="<?= htmlspecialchars($k['penyelenggara'], ENT_QUOTES); ?>"
-                                                data-periode="<?= htmlspecialchars($k['periode'] ?? '', ENT_QUOTES); ?>"
-                                                data-deadline="<?= htmlspecialchars($k['deadline'] ?? '', ENT_QUOTES); ?>"
-                                                data-deskripsi="<?= htmlspecialchars($k['deskripsi'], ENT_QUOTES); ?>"
-                                                data-gambar="<?= htmlspecialchars($k['gambar'], ENT_QUOTES); ?>"
-                                                data-file-panduan="<?= htmlspecialchars($k['file_panduan'], ENT_QUOTES); ?>"
+                                                data-id="<?= $b['id']; ?>"
+                                                data-nama="<?= htmlspecialchars($b['nama_beasiswa'], ENT_QUOTES); ?>"
+                                                data-penyelenggara="<?= htmlspecialchars($b['penyelenggara'], ENT_QUOTES); ?>"
+                                                data-periode="<?= htmlspecialchars($b['periode'] ?? '', ENT_QUOTES); ?>"
+                                                data-deadline="<?= htmlspecialchars($b['deadline'] ?? '', ENT_QUOTES); ?>"
+                                                data-deskripsi="<?= htmlspecialchars($b['deskripsi'], ENT_QUOTES); ?>"
+                                                data-gambar="<?= htmlspecialchars($b['gambar'], ENT_QUOTES); ?>"
+                                                data-file-panduan="<?= htmlspecialchars($b['file_panduan'], ENT_QUOTES); ?>"
                                                 title="Detail">
                                             <i class="fas fa-eye"></i>
                                         </button>
@@ -67,22 +67,22 @@ mysqli_stmt_close($stmt);
                                         <!-- Edit -->
                                         <button class="btn btn-warning btn-sm edit-btn" 
                                                 data-bs-toggle="modal" data-bs-target="#editModal"
-                                                data-id="<?= $k['id']; ?>"
-                                                data-nama="<?= htmlspecialchars($k['nama_kompetisi'], ENT_QUOTES); ?>"
-                                                data-penyelenggara="<?= htmlspecialchars($k['penyelenggara'], ENT_QUOTES); ?>"
-                                                data-periode="<?= htmlspecialchars($k['periode'] ?? '', ENT_QUOTES); ?>"
-                                                data-deadline="<?= htmlspecialchars($k['deadline'] ?? '', ENT_QUOTES); ?>"
-                                                data-deskripsi="<?= htmlspecialchars($k['deskripsi'], ENT_QUOTES); ?>"
-                                                data-gambar="<?= htmlspecialchars($k['gambar'], ENT_QUOTES); ?>"
-                                                data-file-panduan="<?= htmlspecialchars($k['file_panduan'], ENT_QUOTES); ?>"
+                                                data-id="<?= $b['id']; ?>"
+                                                data-nama="<?= htmlspecialchars($b['nama_beasiswa'], ENT_QUOTES); ?>"
+                                                data-penyelenggara="<?= htmlspecialchars($b['penyelenggara'], ENT_QUOTES); ?>"
+                                                data-periode="<?= htmlspecialchars($b['periode'] ?? '', ENT_QUOTES); ?>"
+                                                data-deadline="<?= htmlspecialchars($b['deadline'] ?? '', ENT_QUOTES); ?>"
+                                                data-deskripsi="<?= htmlspecialchars($b['deskripsi'], ENT_QUOTES); ?>"
+                                                data-gambar="<?= htmlspecialchars($b['gambar'], ENT_QUOTES); ?>"
+                                                data-file-panduan="<?= htmlspecialchars($b['file_panduan'], ENT_QUOTES); ?>"
                                                 title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </button>
 
                                         <!-- Hapus -->
-                                        <a href="../../../Function/KompetisiFunction.php?action=delete&id=<?= $k['id']; ?>" 
+                                        <a href="../../../Function/BeasiswaFunction.php?action=delete&id=<?= $b['id']; ?>" 
                                            class="btn btn-danger btn-sm" 
-                                           onclick="return confirm('Yakin hapus kompetisi ini?')"
+                                           onclick="return confirm('Yakin hapus beasiswa ini?')"
                                            title="Hapus">
                                             <i class="fas fa-trash"></i>
                                         </a>
@@ -91,7 +91,7 @@ mysqli_stmt_close($stmt);
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="6" class="text-center">Belum ada kompetisi.</td>
+                                <td colspan="6" class="text-center">Belum ada beasiswa.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -102,14 +102,14 @@ mysqli_stmt_close($stmt);
 
 </div>
 
-<?php include('../FormData/TambahKompetisi.php'); ?>
+<?php include('../FormData/TambahBeasiswa.php'); ?>
 
 <!-- Modal Detail Kompetisi -->
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Detail Kompetisi</h5>
+                <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Detail Beasiswa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -143,17 +143,17 @@ mysqli_stmt_close($stmt);
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="../../../Function/KompetisiFunction.php" method="POST" enctype="multipart/form-data">
+            <form action="../../../Function/BeasiswaFunction.php" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="id" id="edit_id">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Kompetisi</h5>
+                    <h5 class="modal-title">Edit Beasiswa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label>Nama Kompetisi <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="nama_kompetisi" id="edit_nama" required>
+                        <label>Nama Beasiswa <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="nama_beasiswa" id="edit_nama" required>
                     </div>
                     <div class="mb-3">
                         <label>Penyelenggara <span class="text-danger">*</span></label>
@@ -220,13 +220,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('detailDeskripsi').textContent = b.getAttribute('data-deskripsi');
 
         const gambar = b.getAttribute('data-gambar');
-        const gambarPath = gambar ? BASE_URL + '/uploads/kompetisi/' + encodeURIComponent(gambar) : 'https://via.placeholder.com/200?text=No+Image';
+        const gambarPath = gambar ? BASE_URL + '/uploads/beasiswa/' + encodeURIComponent(gambar) : 'https://via.placeholder.com/200?text=No+Image';
         document.getElementById('detailGambar').src = gambarPath;
 
         const file = b.getAttribute('data-file-panduan');
         const fileBtn = document.getElementById('downloadPanduanBtn');
         if (file) {
-            fileBtn.href = BASE_URL + '/uploads/kompetisi/' + encodeURIComponent(file);
+            fileBtn.href = BASE_URL + '/uploads/beasiswa/' + encodeURIComponent(file);
             fileBtn.classList.remove('d-none');
         } else {
             fileBtn.classList.add('d-none');
@@ -245,13 +245,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit_deskripsi').value = b.getAttribute('data-deskripsi');
 
         const gambar = b.getAttribute('data-gambar');
-        const gambarPath = gambar ? BASE_URL + '/uploads/kompetisi/' + encodeURIComponent(gambar) : 'https://via.placeholder.com/100?text=No+Image';
+        const gambarPath = gambar ? BASE_URL + '/uploads/beasiswa/' + encodeURIComponent(gambar) : 'https://via.placeholder.com/100?text=No+Image';
         document.getElementById('current_image_display').src = gambarPath;
 
         const file = b.getAttribute('data-file-panduan');
         const fileLink = document.getElementById('current_file_display');
         if (file) {
-            fileLink.href = BASE_URL + '/uploads/kompetisi/' + encodeURIComponent(file);
+            fileLink.href = BASE_URL + '/uploads/beasiswa/' + encodeURIComponent(file);
             fileLink.classList.remove('d-none');
         } else {
             fileLink.classList.add('d-none');

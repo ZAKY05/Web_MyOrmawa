@@ -1,47 +1,25 @@
 <?php
-include('../SuperAdmin/Header.php');
+include('Header.php');
 include('../../../Config/ConnectDB.php');
 
-// Ambil semua dokumen + nama user
+// Ambil semua dokumen + nama ormawa (tanpa nama user)
 $sql = "
-SELECT 
-d.id, 
-d.nama_dokumen, 
-d.jenis_dokumen, 
-d.tanggal_upload, 
-d.file_path,
-d.id_user
-FROM dokumen d
-LEFT JOIN user u ON d.id_user = u.id
-ORDER BY d.tanggal_upload DESC;
+    SELECT 
+        d.id,
+        d.nama_dokumen,
+        d.tanggal_upload,
+        d.file_path,
+        o.nama_ormawa
+    FROM dokumen d
+    INNER JOIN ormawa o ON d.id_ormawa = o.id
+    ORDER BY d.tanggal_upload DESC
 ";
-$result = $koneksi->query($sql);
+$result = mysqli_query($koneksi, $sql);
 ?>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-file-alt me-2"></i>Arsip Dokumen Anggota Ormawa</h2>
-        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-            <i class="fas fa-plus me-1"></i> Tambah Dokumen
-        </button>
-    </div>
-
-    <!-- Filter & Search -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="input-group">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" id="searchInput" placeholder="Cari nama anggota atau dokumen...">
-            </div>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" id="filterJenis">
-                <option value="">Semua Jenis Dokumen</option>
-                <option value="Proposal">Proposal</option>
-                <option value="SPJ">SPJ</option>
-                <option value="LPJ">LPJ</option>
-            </select>
-        </div>
+        <h2><i class="fas fa-file-alt me-2"></i>Arsip Dokumen Semua Ormawa</h2>
     </div>
 
     <!-- Tabel Dokumen -->
@@ -52,51 +30,34 @@ $result = $koneksi->query($sql);
                     <thead class="table-light">
                         <tr>
                             <th scope="col">#</th>
-                            <th scope="col">Nama Anggota</th>
-                            <th scope="col">Jenis Dokumen</th>
                             <th scope="col">Nama Dokumen</th>
+                            <th scope="col">Ormawa</th>
                             <th scope="col">Tanggal Upload</th>
                             <th scope="col">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($result && $result->num_rows > 0) : ?>
-                            <?php $no = 1;
-                            while ($row = $result->fetch_assoc()) : ?>
+                        <?php if ($result && mysqli_num_rows($result) > 0): ?>
+                            <?php $no = 1; while ($row = mysqli_fetch_assoc($result)): ?>
                                 <tr>
-                                    <th scope="row"><?= $no++ ?></th>
-                                    <td><?= htmlspecialchars($row['nama_anggota'] ?? '–') ?></td>
-                                    <td>
-                                        <span class="badge bg-<?= match ($row['jenis_dokumen']) {
-                                                                    'Proposal' => 'primary',
-                                                                    'SPJ' => 'success',
-                                                                    'LPJ' => 'info',
-                                                                    default => 'secondary'
-                                                                } ?>"><?= htmlspecialchars($row['jenis_dokumen']) ?></span>
-                                    </td>
+                                    <td><?= $no++ ?></td>
                                     <td><?= htmlspecialchars($row['nama_dokumen']) ?></td>
+                                    <td><?= htmlspecialchars($row['nama_ormawa']) ?></td>
                                     <td><?= date('d M Y', strtotime($row['tanggal_upload'])) ?></td>
                                     <td>
                                         <!-- Unduh -->
-                                        <a href="../uploads/dokumen/<?= urlencode($row['file_path']) ?>" class="btn btn-sm btn-success" title="Unduh dokumen">
-                                            <i class="fas fa-download"></i>
-                                        </a>
-
-                                        <!-- Edit (buka modal) -->
-                                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal" data-id="<?= $row['id'] ?>" data-nama="<?= htmlspecialchars($row['nama_dokumen']) ?>" data-jenis="<?= $row['jenis_dokumen'] ?>" data-bs-toggle="tooltip" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-
-                                        <!-- Hapus -->
-                                        <a href="../App/Function/DokumenFunction.php?action=delete&id=<?= $row['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus dokumen ini?')" title="Hapus">
-                                            <i class="fas fa-trash"></i>
+                                        <a href="../../../uploads/dokumen/<?= urlencode($row['file_path']) ?>" 
+                                           class="btn btn-sm btn-success" 
+                                           title="Unduh dokumen"
+                                           target="_blank">
+                                            <i class="fas fa-download"></i> Unduh
                                         </a>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
-                        <?php else : ?>
+                        <?php else: ?>
                             <tr>
-                                <td colspan="6" class="text-center text-muted">Tidak ada dokumen ditemukan.</td>
+                                <td colspan="5" class="text-center text-muted">Tidak ada dokumen.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>
@@ -106,67 +67,5 @@ $result = $koneksi->query($sql);
     </div>
 </div>
 
-<!-- Modal Tambah Dokumen -->
-<?php include('../FormData/TambahDocument.php'); ?>
-
-<!-- Modal Edit Dokumen -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form action="../App/Function/DokumenFunction.php" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="edit">
-                <input type="hidden" name="id" id="edit_id">
-                <!-- Ambil id_ormawa dan id_user dari session (asumsi login) -->
-                <input type="hidden" name="id_ormawa" value="<?= $_SESSION['id_ormawa'] ?? 1 ?>">
-                <input type="hidden" name="id_user" value="<?= $_SESSION['id_user'] ?? 1 ?>">
-
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editModalLabel">Edit Dokumen</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Nama Dokumen</label>
-                        <input type="text" class="form-control" name="nama_dokumen" id="edit_nama" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Jenis Dokumen</label>
-                        <select class="form-select" name="jenis_dokumen" id="edit_jenis" required>
-                            <option value="Proposal">Proposal</option>
-                            <option value="SPJ">SPJ</option>
-                            <option value="LPJ">LPJ</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Ganti File (opsional)</label>
-                        <input type="file" class="form-control" name="file_dokumen">
-                        <div class="form-text">Biarkan kosong jika tidak ingin mengganti file.</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-warning">Simpan Perubahan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- JavaScript untuk Isi Modal Edit -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const editModal = document.getElementById('editModal');
-        editModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const id = button.getAttribute('data-id');
-            const nama = button.getAttribute('data-nama');
-            const jenis = button.getAttribute('data-jenis');
-
-            editModal.querySelector('#edit_id').value = id;
-            editModal.querySelector('#edit_nama').value = nama;
-            editModal.querySelector('#edit_jenis').value = jenis;
-        });
-    });
-</script>
-
-<?php include('../SuperAdmin/Footer.php'); ?>
+<?php include('Footer.php'); ?>
+<?php mysqli_close($koneksi); ?>

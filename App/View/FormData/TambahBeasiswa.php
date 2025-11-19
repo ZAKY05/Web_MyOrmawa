@@ -1,16 +1,16 @@
 <!-- Modal Tambah Kompetisi -->
-<div class="modal fade" id="tambahKompetisiModal" tabindex="-1">
+<div class="modal fade" id="tambahBeasiswaModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Tambah Kompetisi</h5>
+                <h5 class="modal-title">Tambah Beasiswa</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="formTambahKompetisi">
+                <form id="formTambahBeasiswa">
                     <div class="mb-3">
-                        <label>Nama Kompetisi <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="nama_kompetisi" required placeholder="Hackathon AI Innovation">
+                        <label>Nama Beasiswa <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="nama_beasiswa" required placeholder="Hackathon AI Innovation">
                     </div>
                     <div class="mb-3">
                         <label>Penyelenggara <span class="text-danger">*</span></label>
@@ -42,17 +42,17 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" onclick="simpanKompetisi()">Simpan</button>
+                <button type="button" class="btn btn-primary" onclick="simpanBeasiswa()">Simpan</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function simpanKompetisi() {
-    const formData = new FormData(document.getElementById('formTambahKompetisi'));
+function simpanBeasiswa() {
+    const formData = new FormData(document.getElementById('formTambahBeasiswa'));
     
-    fetch('../../../Function/KompetisiFunction.php?action=add', {
+    fetch('../../../Function/BeasiswaFunction.php?action=add', {
         method: 'POST',
         body: formData
     })

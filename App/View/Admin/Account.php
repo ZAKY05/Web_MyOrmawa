@@ -4,7 +4,7 @@ include('../../../Config/ConnectDB.php');
 
 // Fungsi ambil data akun Ormawa (level = 2)
 function getAccountOrmawa($koneksi) {
-    $sql = "SELECT id, nama, nim, username, email, level FROM user WHERE level = 3 ORDER BY nama ASC";
+    $sql = "SELECT id, full_name, nim, username, email, level FROM user WHERE level = 3 ORDER BY full_name ASC";
     $result = mysqli_query($koneksi, $sql);
     $data = [];
     if ($result) {
@@ -74,7 +74,7 @@ $accounts = getAccountOrmawa($koneksi);
                             <?php foreach ($accounts as $acc): ?>
                                 <tr>
                                     <td><?= $no++; ?></td>
-                                    <td><?= htmlspecialchars($acc['nama']); ?></td>
+                                    <td><?= htmlspecialchars($acc['full_name)']); ?></td>
                                     <td><?= htmlspecialchars($acc['nim']); ?></td>
                                     <td><?= htmlspecialchars($acc['username']); ?></td>
                                     <td><?= htmlspecialchars($acc['email']); ?></td>
