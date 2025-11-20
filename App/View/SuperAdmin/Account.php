@@ -3,7 +3,7 @@
 
 <?php
 function getAccountOrmawa($koneksi) {
-    $sql = "SELECT id, nama, nim, username, email, password FROM user WHERE level = 2 ORDER BY nama ASC";
+    $sql = "SELECT id, full_name, nim, email, password FROM user WHERE level = 2 ORDER BY full_name ASC";
     $result = mysqli_query($koneksi, $sql);
     $data = [];
     if ($result) {
