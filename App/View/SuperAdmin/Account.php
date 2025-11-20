@@ -3,7 +3,7 @@
 
 <?php
 function getAccountOrmawa($koneksi) {
-    $sql = "SELECT id, full_name, nim, email, password FROM user WHERE level = 2 ORDER BY full_name ASC";
+    $sql = "SELECT id, full_name, nim, username, email, password FROM user WHERE level = 2 ORDER BY full_name ASC";
     $result = mysqli_query($koneksi, $sql);
     $data = [];
     if ($result) {
@@ -93,7 +93,7 @@ $accounts = getAccountOrmawa($koneksi);
                             <?php foreach ($accounts as $acc): ?>
                                 <tr>
                                     <td><?= $no++; ?></td>
-                                    <td><?= htmlspecialchars($acc['nama']); ?></td>
+                                    <td><?= htmlspecialchars($acc['full_name']); ?></td>
                                     <td><?= htmlspecialchars($acc['nim']); ?></td>
                                     <td><?= htmlspecialchars($acc['username']); ?></td>
                                     <td><?= htmlspecialchars($acc['email']); ?></td>
@@ -103,7 +103,7 @@ $accounts = getAccountOrmawa($koneksi);
                                             data-bs-target="#tambahAccountModal"
                                             onclick='editAccount(
                                                 <?= (int)$acc['id'] ?>,
-                                                <?= json_encode(htmlspecialchars($acc['nama'])) ?>,
+                                                <?= json_encode(htmlspecialchars($acc['full_name'])) ?>,
                                                 <?= json_encode(htmlspecialchars($acc['nim'])) ?>,
                                                 <?= json_encode(htmlspecialchars($acc['username'])) ?>,
                                                 <?= json_encode(htmlspecialchars($acc['email'])) ?>

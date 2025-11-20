@@ -28,19 +28,24 @@
 
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=anggota">
-        <i class="fa-solid fa-users"></i>
+            <i class="fa-solid fa-users"></i>
             <span>Anggota</span></a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=account">
             <i class="fa-solid fa-id-card"></i>
-            <span>Manajemen Account</span></a>
+            <span>Account Anggota</span></a>
     </li>
 
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=event">
             <i class="fas fa-calendar-week"></i>
             <span>Event</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="Index.php ?page=absensi">
+            <i class="fa-solid fa-calendar-check"></i>
+            <span>Absensi</span></a>
     </li>
 
     <!-- Nav Item - Utilities Collapse Menu -->
@@ -79,20 +84,16 @@
             <span>Kompetisi</span></a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="Index.php ?page=kompetisi">
-        <i class="fas fa-user-graduate"></i>
+        <a class="nav-link" href="Index.php ?page=beasiswa">
+            <i class="fas fa-user-graduate"></i>
             <span>Beasiswa</span></a>
     </li>
 
     <!-- Nav Item - Tables -->
-    <li class="nav-item">
-        <a class="nav-link" href="Index.php ?page=absensi">
-            <i class="fa-solid fa-calendar-check"></i>
-            <span>Absensi</span></a>
-    </li>
+
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=kegiatan">
-        <i class="fas fa-list"></i>
+            <i class="fas fa-list"></i>
             <span>Kegiatan</span></a>
     </li>
 

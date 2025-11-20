@@ -1,9 +1,7 @@
 <?php
-// JANGAN panggil session_start() di sini — pastikan sudah dijalankan di halaman utama
-
-// Ambil dari session — fallback ke Guest jika belum login
-$user_nama = isset($_SESSION['user_nama']) ? htmlspecialchars($_SESSION['user_nama'], ENT_QUOTES, 'UTF-8') : 'Guest';
-$ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['ormawa_nama'], ENT_QUOTES, 'UTF-8') : '';
+// Ambil dari session — TIDAK PERLU QUERY DATABASE DI SINI
+$user_nama = isset($_SESSION['user_nama']) ? $_SESSION['user_nama'] : 'Guest';
+$ormawa_nama = isset($_SESSION['ormawa_nama']) ? $_SESSION['ormawa_nama'] : 'SuperAdmin';
 ?>
 
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
@@ -34,6 +32,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
                 <i class="fas fa-bell fa-fw"></i>
                 <span class="badge badge-danger badge-counter">3+</span>
             </a>
+            <!-- Dropdown - Alerts (tidak diubah) -->
             <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="alertsDropdown">
                 <h6 class="dropdown-header">Alerts Center</h6>
                 <a class="dropdown-item d-flex align-items-center" href="#">
@@ -79,6 +78,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
                 <i class="fas fa-envelope fa-fw"></i>
                 <span class="badge badge-danger badge-counter">7</span>
             </a>
+            <!-- Dropdown - Messages (tidak diubah) -->
             <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="messagesDropdown">
                 <h6 class="dropdown-header">Message Center</h6>
                 <a class="dropdown-item d-flex align-items-center" href="#">
@@ -91,16 +91,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
                         <div class="small text-gray-500">Emily Fowler · 58m</div>
                     </div>
                 </a>
-                <a class="dropdown-item d-flex align-items-center" href="#">
-                    <div class="dropdown-list-image mr-3">
-                        <img class="rounded-circle" src="img/undraw_profile_2.svg" alt="...">
-                        <div class="status-indicator"></div>
-                    </div>
-                    <div>
-                        <div class="text-truncate">I have the photos that you ordered last month, how would you like them sent to you?</div>
-                        <div class="small text-gray-500">Jae Chun · 1d</div>
-                    </div>
-                </a>
+                <!-- ... sisanya biarkan ... -->
                 <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
             </div>
         </li>
@@ -112,15 +103,13 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                 <div class="text-right mr-2 d-none d-lg-block">
                     <span class="d-block text-gray-600 small">
-                        <?php echo $user_nama; ?>
+                        <?php echo htmlspecialchars($user_nama, ENT_QUOTES, 'UTF-8'); ?>
                     </span>
-                    <?php if (!empty($ormawa_nama)): ?>
                     <span class="d-block text-gray-500 small" style="font-size: 0.75rem;">
-                        <b><?php echo $ormawa_nama; ?></b>
+                      <b><?php echo htmlspecialchars($ormawa_nama, ENT_QUOTES, 'UTF-8'); ?></b>
                     </span>
-                    <?php endif; ?>
                 </div>
-                <img class="img-profile rounded-circle" src="../../../Asset/Img/gw.jpg" alt="Profile">
+                <img class="img-profile rounded-circle" src="../../../Asset/Img/gw.jpg">
             </a>
             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
                 <a class="dropdown-item" href="#">
@@ -132,6 +121,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
                     Settings
                 </a>
                 <div class="dropdown-divider"></div>
+                <!-- 🔁 DIUBAH: BUKAN href langsung, tapi buka modal -->
                 <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                     Logout
@@ -143,7 +133,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
 
 </nav>
 
-<!-- Modal Logout -->
+<!-- Modal Logout (Diperbaiki) -->
 <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
