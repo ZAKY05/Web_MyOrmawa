@@ -328,7 +328,7 @@ include('../SuperAdmin/Header.php');
                                 <label class="small font-weight-bold">Status</label>
                                 <div class="custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" id="statusSwitch" name="status_switch" <?= $form_detail && $form_detail['status'] == 'published' ? 'checked' : '' ?>>
-                                    <label class="custom-control-label" for="statusSwitch">Published</label>
+                                    <label class="custom-control-label" for="statusSwitch"><?= $form_detail && $form_detail['status'] == 'published' ? 'Published' : 'Private' ?></label>
                                 </div>
                                 <input type="hidden" name="status" id="statusInput" value="<?= $form_detail ? $form_detail['status'] : 'private' ?>">
                             </div>
@@ -632,13 +632,16 @@ include('../SuperAdmin/Header.php');
     document.addEventListener('DOMContentLoaded', function() {
         const statusSwitch = document.getElementById('statusSwitch');
         const statusInput = document.getElementById('statusInput');
+        const statusLabel = document.querySelector('label[for="statusSwitch"]');
 
         if (statusSwitch) {
             statusSwitch.addEventListener('change', function() {
                 if (this.checked) {
                     statusInput.value = 'published';
+                    statusLabel.textContent = 'Published';
                 } else {
                     statusInput.value = 'private';
+                    statusLabel.textContent = 'Private';
                 }
             });
         }

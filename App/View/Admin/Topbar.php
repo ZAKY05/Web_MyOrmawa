@@ -91,7 +91,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? $_SESSION['ormawa_nama'] : 'Orm
                         <div class="small text-gray-500">Emily Fowler · 58m</div>
                     </div>
                 </a>
-                <!-- ... sisanya biarkan ... -->
+                <!-- ... (biarkan sisanya seperti aslinya) ... -->
                 <a class="dropdown-item text-center small text-gray-500" href="#">Read More Messages</a>
             </div>
         </li>
@@ -106,7 +106,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? $_SESSION['ormawa_nama'] : 'Orm
                         <?php echo htmlspecialchars($user_nama, ENT_QUOTES, 'UTF-8'); ?>
                     </span>
                     <span class="d-block text-gray-500 small" style="font-size: 0.75rem;">
-                      <b><?php echo htmlspecialchars($ormawa_nama, ENT_QUOTES, 'UTF-8'); ?></b>
+                      <b>  <?php echo htmlspecialchars($ormawa_nama, ENT_QUOTES, 'UTF-8'); ?></b>
                     </span>
                 </div>
                 <img class="img-profile rounded-circle" src="../../../Asset/Img/gw.jpg">
@@ -121,8 +121,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? $_SESSION['ormawa_nama'] : 'Orm
                     Settings
                 </a>
                 <div class="dropdown-divider"></div>
-                <!-- 🔁 DIUBAH: BUKAN href langsung, tapi buka modal -->
-                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
+                <a class="dropdown-item" href="/MyOrmawa/LoginFunction.php?logout=true" onclick="return confirm('Yakin ingin logout?');">
                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                     Logout
                 </a>
@@ -132,26 +131,3 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? $_SESSION['ormawa_nama'] : 'Orm
     </ul>
 
 </nav>
-
-<!-- Modal Logout (Diperbaiki) -->
-<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                Apakah Anda yakin ingin logout dan meninggalkan halaman ini?
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
-                <a class="btn btn-primary" href="/MyOrmawa/Function/LoginFunction.php?logout=true">
-                    <i class="fas fa-sign-out-alt fa-sm"></i> Logout
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
