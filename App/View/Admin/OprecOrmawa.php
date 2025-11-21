@@ -85,7 +85,7 @@ include('../SuperAdmin/Header.php');
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder</h1>
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder (Anggota)</h1>
         <a href="?page=oprec&create=1" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> Buat Form Baru
         </a>
@@ -315,7 +315,7 @@ include('../SuperAdmin/Header.php');
                                 <label class="small font-weight-bold">Gambar Cover</label>
                                 <?php if ($form_detail && $form_detail['gambar']): ?>
                                     <div class="mb-2">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
+                                        <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
                                     </div>
                                 <?php endif; ?>
                                 <input type="file" name="gambar" class="form-control-file" accept="image/*">
@@ -416,7 +416,7 @@ include('../SuperAdmin/Header.php');
                             <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                                 <?php if ($form_detail['gambar']): ?>
                                     <div class="text-center mb-3">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
+                                        <img src="../../../uploads/form<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
                                     </div>
                                 <?php endif; ?>
                                 
