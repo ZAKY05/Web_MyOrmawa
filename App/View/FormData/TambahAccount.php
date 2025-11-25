@@ -13,8 +13,8 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="nama" class="form-label">Nama Lengkap</label>
-                            <input type="text" class="form-control" id="nama" name="nama" required>
-                        </div>
+                            <input type="text" class="form-control" id="nama" name="full_name" required> 
+                            </div>
                         <div class="col-md-6 mb-3">
                             <label for="nim" class="form-label">NIM</label>
                             <input type="text" class="form-control" id="nim" name="nim" required>
@@ -22,11 +22,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email" name="email" required>
                         </div>
@@ -58,29 +54,28 @@ function resetAccountForm() {
     document.getElementById('formAction').value = 'add';
     document.getElementById('editId').value = '';
     document.getElementById('formTitle').textContent = 'Tambah Akun Ormawa';
-    // Password wajib saat tambah → tambahkan atribut required
+    
     document.getElementById('password').setAttribute('required', 'required');
     document.getElementById('password').closest('.mb-3').querySelector('small').textContent =
         'Wajib saat tambah. Kosongkan saat edit jika tidak ingin ganti password.';
 }
 
 // Fungsi untuk isi form dalam mode EDIT
-function editAccount(id, nama, nim, username, email) {
+// Parameter username DIHAPUS
+function editAccount(id, nama, nim, email) {
     document.getElementById('formAction').value = 'edit';
     document.getElementById('editId').value = id;
     document.getElementById('nama').value = nama;
     document.getElementById('nim').value = nim;
-    document.getElementById('username').value = username;
+    // document.getElementById('username').value = username; // HAPUS INI
     document.getElementById('email').value = email;
-    document.getElementById('password').value = ''; // Biarkan kosong
+    document.getElementById('password').value = ''; 
     document.getElementById('formTitle').textContent = 'Edit Akun Ormawa';
     
-    // Saat edit, password TIDAK wajib
     document.getElementById('password').removeAttribute('required');
     document.getElementById('password').closest('.mb-3').querySelector('small').textContent =
         'Kosongkan jika tidak ingin mengganti password.';
     
-    // Tampilkan modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('tambahAccountModal')) ||
                   new bootstrap.Modal(document.getElementById('tambahAccountModal'));
     modal.show();
@@ -91,6 +86,5 @@ function submitAccountForm() {
     document.getElementById('accountForm').submit();
 }
 
-// Reset form tiap kali modal ditutup
 document.getElementById('tambahAccountModal').addEventListener('hidden.bs.modal', resetAccountForm);
 </script>

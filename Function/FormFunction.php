@@ -102,9 +102,15 @@ switch ($action) {
             // Image upload logic here...
         }
 
-        $stmt = $koneksi->prepare("UPDATE form_info SET judul = ?, deskripsi = ?, gambar = ? WHERE id = ?");
+        $status = trim($_POST['status'] ?? 'private'); // Get status from POST
+        // Validate status to ensure it's either 'published' or 'private'
+        if (!in_array($status, ['published', 'private'])) {
+            $status = 'private'; // Default to private if invalid
+        }
+
+        $stmt = $koneksi->prepare("UPDATE form_info SET judul = ?, deskripsi = ?, gambar = ?, status = ? WHERE id = ?");
         if ($stmt) {
-            $stmt->bind_param("sssi", $judul, $deskripsi, $gambar_nama, $form_info_id);
+            $stmt->bind_param("ssssi", $judul, $deskripsi, $gambar_nama, $status, $form_info_id); // Add status to bind_param
             $stmt->execute();
             $stmt->close();
             header("Location: " . get_redirect_url($redirect_page, "form_id=$form_info_id&success=form"));

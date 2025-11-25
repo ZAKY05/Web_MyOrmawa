@@ -1,12 +1,14 @@
 <?php
-
 $host = 'localhost';
-$dbname = 'myormawa_db';
 $username = 'root';
 $password = '';
+$database = 'myormawa_db';
 
-$koneksi = mysqli_connect($host, $username, $password, $dbname);
-if(!$koneksi){
-    die("Koneksi gagal");
+$koneksi = mysqli_connect($host, $username, $password, $database);
+
+if (!$koneksi) {
+    throw new Exception("Gagal koneksi: " . mysqli_connect_error());
 }
+
+return $koneksi;
 ?>

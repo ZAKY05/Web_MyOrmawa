@@ -8,7 +8,7 @@ $view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_
 include '../SuperAdmin/ViewSubmissions.php';
 
 $query = "
-    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, fi.user_id, u.nama as pembuat_nama
+    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, fi.user_id, u.full_name as pembuat_nama
     FROM form_info fi
     LEFT JOIN user u ON fi.user_id = u.id
 ";
@@ -31,7 +31,7 @@ while ($row = mysqli_fetch_assoc($forms_result)) {
 $form_detail = null;
 $form_fields = [];
 if ($active_form_id > 0) {
-    $form_detail_query = "SELECT id, judul, deskripsi, gambar, user_id FROM form_info WHERE id = ?";
+    $form_detail_query = "SELECT id, judul, deskripsi, gambar, user_id, status FROM form_info WHERE id = ?";
     $stmt = $koneksi->prepare($form_detail_query);
     $stmt->bind_param("i", $active_form_id);
     $stmt->execute();
@@ -85,7 +85,7 @@ include('../SuperAdmin/Header.php');
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder</h1>
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs"></i> Form Builder (Anggota)</h1>
         <a href="?page=oprec&create=1" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> Buat Form Baru
         </a>
@@ -165,9 +165,9 @@ include('../SuperAdmin/Header.php');
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Form Aktif</div>
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Status Form</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $form_detail ? htmlspecialchars(substr($form_detail['judul'], 0, 20)) . (strlen($form_detail['judul']) > 20 ? '...' : '') : 'Tidak ada' ?>
+                                <?= $form_detail ? ucfirst($form_detail['status']) : 'Tidak ada' ?>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -315,13 +315,22 @@ include('../SuperAdmin/Header.php');
                                 <label class="small font-weight-bold">Gambar Cover</label>
                                 <?php if ($form_detail && $form_detail['gambar']): ?>
                                     <div class="mb-2">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
+                                        <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
                                     </div>
                                 <?php endif; ?>
                                 <input type="file" name="gambar" class="form-control-file" accept="image/*">
                                 <?php if ($form_detail && $form_detail['gambar']): ?>
                                     <small class="form-text text-muted">Kosongkan jika tidak ingin mengubah</small>
                                 <?php endif; ?>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Status</label>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="statusSwitch" name="status_switch" <?= $form_detail && $form_detail['status'] == 'published' ? 'checked' : '' ?>>
+                                    <label class="custom-control-label" for="statusSwitch"><?= $form_detail && $form_detail['status'] == 'published' ? 'Published' : 'Private' ?></label>
+                                </div>
+                                <input type="hidden" name="status" id="statusInput" value="<?= $form_detail ? $form_detail['status'] : 'private' ?>">
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-block">
@@ -407,7 +416,7 @@ include('../SuperAdmin/Header.php');
                             <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                                 <?php if ($form_detail['gambar']): ?>
                                     <div class="text-center mb-3">
-                                        <img src="../../../uploads/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
+                                        <img src="../../../uploads/form<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
                                     </div>
                                 <?php endif; ?>
                                 
@@ -619,6 +628,24 @@ include('../SuperAdmin/Header.php');
             }
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusSwitch = document.getElementById('statusSwitch');
+        const statusInput = document.getElementById('statusInput');
+        const statusLabel = document.querySelector('label[for="statusSwitch"]');
+
+        if (statusSwitch) {
+            statusSwitch.addEventListener('change', function() {
+                if (this.checked) {
+                    statusInput.value = 'published';
+                    statusLabel.textContent = 'Published';
+                } else {
+                    statusInput.value = 'private';
+                    statusLabel.textContent = 'Private';
+                }
+            });
+        }
+    });
 </script>
 
 <?php include('../SuperAdmin/Footer.php'); ?>

@@ -54,7 +54,7 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Openn Recruitmen</h6>
                 <a class="collapse-item" href="Index.php?page=oprec">Anggota Ormawa</a>
-                <a class="collapse-item" href="Index.php?page=oprec-event">Panitia Event</a>
+                <a class="collapse-item" href="utilities-border.html">Panitia Event</a>
             </div>
     </li>
 

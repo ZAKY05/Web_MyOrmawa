@@ -9,7 +9,7 @@ include '../SuperAdmin/ViewSubmissions.php';
 
 // --- PERUBAHAN: Query difilter untuk jenis_form = 'event' ---
 $forms_result = mysqli_query($koneksi, "
-    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, u.nama as pembuat_nama
+    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, u.full_name as pembuat_nama
     FROM form_info fi
     JOIN user u ON fi.user_id = u.id
     WHERE fi.jenis_form = 'event'
@@ -25,7 +25,7 @@ $form_detail = null;
 $form_fields = [];
 if ($active_form_id > 0) {
     // --- PERUBAHAN: Pastikan form yang di-load adalah tipe 'event' ---
-    $form_detail_query = "SELECT id, judul, deskripsi, gambar FROM form_info WHERE id = ? AND jenis_form = 'event'";
+    $form_detail_query = "SELECT id, judul, deskripsi, gambar, status FROM form_info WHERE id = ? AND jenis_form = 'event'";
     $stmt = $koneksi->prepare($form_detail_query);
     $stmt->bind_param("i", $active_form_id);
     $stmt->execute();
@@ -158,9 +158,9 @@ include('../SuperAdmin/Header.php');
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Form Aktif</div>
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Status Form</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $form_detail ? htmlspecialchars(substr($form_detail['judul'], 0, 20)) . (strlen($form_detail['judul']) > 20 ? '...' : '') : 'Tidak ada' ?>
+                                <?= $form_detail ? ucfirst($form_detail['status']) : 'Tidak ada' ?>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -315,6 +315,15 @@ include('../SuperAdmin/Header.php');
                                 <?php if ($form_detail && $form_detail['gambar']): ?>
                                     <small class="form-text text-muted">Kosongkan jika tidak ingin mengubah</small>
                                 <?php endif; ?>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Status</label>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="statusSwitch" name="status_switch" <?= $form_detail && $form_detail['status'] == 'published' ? 'checked' : '' ?>>
+                                    <label class="custom-control-label" for="statusSwitch"><?= $form_detail && $form_detail['status'] == 'published' ? 'Published' : 'Private' ?></label>
+                                </div>
+                                <input type="hidden" name="status" id="statusInput" value="<?= $form_detail ? $form_detail['status'] : 'private' ?>">
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-block">
@@ -610,6 +619,24 @@ include('../SuperAdmin/Header.php');
             }
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusSwitch = document.getElementById('statusSwitch');
+        const statusInput = document.getElementById('statusInput');
+        const statusLabel = document.querySelector('label[for="statusSwitch"]');
+
+        if (statusSwitch) {
+            statusSwitch.addEventListener('change', function() {
+                if (this.checked) {
+                    statusInput.value = 'published';
+                    statusLabel.textContent = 'Published';
+                } else {
+                    statusInput.value = 'private';
+                    statusLabel.textContent = 'Private';
+                }
+            });
+        }
+    });
 </script>
 
 <?php include('../SuperAdmin/Footer.php'); ?>
