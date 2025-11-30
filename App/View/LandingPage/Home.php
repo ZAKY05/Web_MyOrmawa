@@ -1,28 +1,24 @@
 <?php
-// Pastikan koneksi database di-include
+
 include('../SuperAdmin/Header.php');
 include('../../../Config/ConnectDB.php');
-
-// Fungsi untuk mengambil data ormawa (mungkin masih digunakan di bagian lain)
 function getOrmawaData($koneksi) {
-    $sql = "SELECT id, nama_ormawa, deskripsi, logo FROM ormawa ORDER BY nama_ormawa ASC";
+    $sql = "SELECT id, nama_ormawa, deskripsi, logo, kategori, visi, misi, email, contact_person FROM ormawa ORDER BY nama_ormawa ASC";
     $result = mysqli_query($koneksi, $sql);
     $data = [];
     if ($result) {
         while($row = mysqli_fetch_assoc($result)) {
             $data[] = $row;
         }
+        
         mysqli_free_result($result);
     } else {
         echo "Error: " . mysqli_error($koneksi);
     }
     return $data;
 }
-
-// Fungsi untuk mengambil data kegiatan/event terbaru
 function getKegiatanTerbaru($koneksi, $jumlah = 6) {
-    // Query untuk mengambil event terbaru, misalnya berdasarkan tgl_mulai DESC
-    // Tambahkan 'e.gambar' ke dalam SELECT agar datanya bisa digunakan
+
     $sql = "SELECT e.id, e.nama_event, e.deskripsi, e.tgl_mulai, e.tgl_selesai, e.lokasi, e.gambar, o.nama_ormawa
             FROM event e
             JOIN ormawa o ON e.ormawa_id = o.id
@@ -65,182 +61,9 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
     <title>Ormawa Kampus - Organisasi Mahasiswa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css  " rel="stylesheet">
     <link rel="stylesheet" href="../../../Asset/Css/LandingPage.css">
+    <link rel="stylesheet" href="../../../Asset/Css/Modal.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css  ">
-    <style>
-        /* Gaya untuk slider Ormawa */
-        .structure-section {
-            padding: 100px 0;
-        }
-        .section-title {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-        .section-title h2 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-        .text-gradient {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .ormawa-slider-container {
-            position: relative;
-            overflow: hidden;
-            margin: 0 auto;
-            max-width: 1200px;
-        }
-        .ormawa-slider-wrapper {
-            display: flex;
-            transition: transform 0.5s ease-in-out;
-        }
-        .ormawa-slide {
-            display: flex;
-            min-width: 100%;
-            gap: 2rem;
-        }
-        .ormawa-card {
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            overflow: hidden;
-            transition: transform 0.3s ease;
-            flex: 1 1 calc(33.333% - 2rem); /* Membuat 3 card per slide */
-        }
-        .ormawa-card:hover {
-            transform: translateY(-10px);
-        }
-        .ormawa-logo {
-            width: 100%;
-            height: 150px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8f9fa;
-            padding: 1rem;
-        }
-        .ormawa-logo img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-        .ormawa-content {
-            padding: 1.5rem;
-        }
-        .ormawa-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-        }
-        .ormawa-description {
-            color: #6c757d;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-        .btn-primary {
-            background-color: #667eea;
-            border-color: #667eea;
-        }
-        .btn-primary:hover {
-            background-color: #5a6fd8;
-            border-color: #5a6fd8;
-        }
-        .btn-sm {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.875rem;
-        }
-        .ormawa-slider-controls {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-        .ormawa-arrow {
-            cursor: pointer;
-            font-size: 1.5rem;
-            color: #667eea;
-            background: white;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .ormawa-arrow:hover {
-            background-color: #667eea;
-            color: white;
-        }
-        .ormawa-dots {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .ormawa-dot {
-            cursor: pointer;
-            height: 10px;
-            width: 10px;
-            background-color: #bbb;
-            border-radius: 50%;
-            display: inline-block;
-            transition: background-color 0.3s;
-        }
-        .ormawa-dot.active {
-            background-color: #667eea;
-        }
-        /* Gaya untuk card kegiatan */
-        .activity-card {
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            overflow: hidden;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .activity-img {
-            height: 200px;
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-        .activity-date {
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 0.5rem;
-            border-radius: 5px;
-            text-align: center;
-            min-width: 60px;
-        }
-        .activity-date .day {
-            display: block;
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .activity-date .month {
-            display: block;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-        .activity-content {
-            padding: 1.5rem;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .activity-content h5 {
-            flex-grow: 1;
-        }
-        .activity-content a {
-            align-self: flex-start;
-        }
-        
-    </style>
+
 </head>
 
 <body>
@@ -258,16 +81,10 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
                         <a class="nav-link" href="#home">Beranda</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#profil">Profil</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="#kegiatan">Kegiatan</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#struktur">Struktur</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#galeri">Galeri</a>
+                        <a class="nav-link" href="#struktur">Ormawa</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#kontak">Kontak</a>
@@ -332,127 +149,151 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
         </div>
     </section>
 
-    <!-- Section Kegiatan Terbaru - Diambil dari database -->
-    <section id="kegiatan">
-        <div class="container">
-            <div class="section-title">
-                <h2><span class="text-gradient">Kegiatan</span> Terbaru</h2>
-                <p>Berbagai kegiatan yang telah dan akan dilaksanakan</p>
-            </div>
 
-            <div class="row g-4">
-                <?php if (!empty($kegiatan_list)): ?>
-                    <?php foreach ($kegiatan_list as $kegiatan): ?>
-                        <div class="col-lg-4 col-md-6">
-                            <div class="activity-card">
-                                <?php
-                                // Tentukan path gambar berdasarkan data dari database
-                                $gambar_nama_file = $kegiatan['gambar'];
-                                // Sesuaikan path ini dengan struktur folder upload Anda
-                                $gambar_path = '../../../Uploads/event/' . $gambar_nama_file;
-                                // Gunakan placeholder jika gambar tidak ditemukan atau kosong
-                                $gambar_url = ($gambar_nama_file && file_exists(__DIR__ . '/../../../Uploads/event/' . $gambar_nama_file)) ? $gambar_path : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
-                                ?>
-                                <!-- Gunakan $gambar_url di sini -->
-                                <div class="activity-img" style="background-image: url('<?php echo htmlspecialchars($gambar_url); ?>');">
-                                    <div class="activity-date">
-                                        <?php
-                                        $tgl_mulai_obj = new DateTime($kegiatan['tgl_mulai']);
-                                        ?>
-                                        <span class="day"><?php echo $tgl_mulai_obj->format('d'); ?></span>
-                                        <span class="month"><?php echo $tgl_mulai_obj->format('M'); ?></span>
-                                    </div>
-                                </div>
-                                <div class="activity-content">
-                                    <!-- Gunakan nama ormawa sebagai badge -->
-                                    <span class="badge bg-primary mb-2"><?php echo htmlspecialchars($kegiatan['nama_ormawa']); ?></span>
-                                    <h5 class="mb-2"><?php echo htmlspecialchars($kegiatan['nama_event']); ?></h5>
-                                    <p class="text-muted mb-3"><?php echo htmlspecialchars(substr($kegiatan['deskripsi'], 0, 100)) . (strlen($kegiatan['deskripsi']) > 100 ? '...' : ''); ?></p>
-                                    <!-- Ganti href ke halaman detail event yang sesungguhnya -->
-                                    <a href="#" class="text-decoration-none">Lihat Detail <i class="bi bi-arrow-right"></i></a>
+
+<!-- SECTION KEGIATAN TERBARU - MODIFIED -->
+<section id="kegiatan">
+    <div class="container">
+        <div class="section-title">
+            <h2><span class="text-gradient">Kegiatan</span> Terbaru</h2>
+            <p>Berbagai kegiatan yang telah dan akan dilaksanakan</p>
+        </div>
+
+        <div class="row g-4">
+            <?php if (!empty($kegiatan_list)): ?>
+                <?php foreach ($kegiatan_list as $kegiatan): ?>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="activity-card">
+                            <?php
+                            $gambar_nama_file = $kegiatan['gambar'];
+                            $gambar_path = '../../../Uploads/event/' . $gambar_nama_file;
+                            $gambar_url = ($gambar_nama_file && file_exists(__DIR__ . '/../../../Uploads/event/' . $gambar_nama_file)) 
+                                ? $gambar_path 
+                                : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+                            ?>
+                            <div class="activity-img" style="background-image: url('<?php echo htmlspecialchars($gambar_url); ?>');">
+                                <div class="activity-date">
+                                    <?php
+                                    $tgl_mulai_obj = new DateTime($kegiatan['tgl_mulai']);
+                                    ?>
+                                    <span class="day"><?php echo $tgl_mulai_obj->format('d'); ?></span>
+                                    <span class="month"><?php echo $tgl_mulai_obj->format('M'); ?></span>
                                 </div>
                             </div>
+                            <div class="activity-content">
+                                <span class="badge bg-primary mb-2"><?php echo htmlspecialchars($kegiatan['nama_ormawa']); ?></span>
+                                <h5 class="mb-2"><?php echo htmlspecialchars($kegiatan['nama_event']); ?></h5>
+                                <p class="text-muted mb-3"><?php echo htmlspecialchars(substr($kegiatan['deskripsi'], 0, 100)) . (strlen($kegiatan['deskripsi']) > 100 ? '...' : ''); ?></p>
+                                
+                                <!-- MODIFIED: Button dengan onclick event -->
+                                <a href="#" class="text-decoration-none" onclick="event.preventDefault(); showEventDetail({
+                                    id: <?php echo $kegiatan['id']; ?>,
+                                    nama_event: '<?php echo addslashes($kegiatan['nama_event']); ?>',
+                                    deskripsi: '<?php echo addslashes($kegiatan['deskripsi']); ?>',
+                                    tgl_mulai: '<?php echo $kegiatan['tgl_mulai']; ?>',
+                                    tgl_selesai: '<?php echo $kegiatan['tgl_selesai']; ?>',
+                                    lokasi: '<?php echo addslashes($kegiatan['lokasi']); ?>',
+                                    gambar: '<?php echo htmlspecialchars($gambar_url); ?>',
+                                    nama_ormawa: '<?php echo addslashes($kegiatan['nama_ormawa']); ?>'
+                                });">
+                                    Lihat Detail <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-12">
+                    <p class="text-center">Belum ada kegiatan yang diumumkan.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</section>
+
+<!-- SECTION DAFTAR ORMAWA - MODIFIED -->
+<section id="struktur" class="structure-section">
+    <div class="container">
+        <div class="section-title">
+            <h2><span class="text-gradient">Daftar</span> Organisasi Mahasiswa</h2>
+            <p>Himpunan Mahasiswa Jurusan di Kampus</p>
+        </div>
+
+        <div class="ormawa-slider-container">
+            <div class="ormawa-slider-wrapper" id="ormawaSlider">
+                <?php if (!empty($ormawa_chunks)): ?>
+                    <?php foreach ($ormawa_chunks as $index => $chunk): ?>
+                        <div class="ormawa-slide">
+                            <?php foreach ($chunk as $ormawa): ?>
+                                <div class="ormawa-card">
+                                    <div class="ormawa-logo">
+                                        <?php
+                                        $logo_nama_file = $ormawa['logo'];
+                                        $logo_url = ($logo_nama_file && file_exists(__DIR__ . '/../../../uploads/logos/' . $logo_nama_file)) 
+                                            ? '../../../uploads/logos/' . $logo_nama_file 
+                                            : 'https://via.placeholder.com/150/667eea/ffffff?text=' . substr($ormawa['nama_ormawa'], 0, 2);
+                                        ?>
+                                        <img src="<?php echo $logo_url; ?>" alt="Logo <?php echo htmlspecialchars($ormawa['nama_ormawa']); ?>">
+                                    </div>
+                                    <div class="ormawa-content">
+                                        <h5 class="ormawa-title"><?php echo htmlspecialchars($ormawa['nama_ormawa']); ?></h5>
+                                        <?php
+                                        // Add the dynamically generated logo_url to the ormawa data array
+                                        $ormawa['logo'] = $logo_url;
+                                        // Encode the whole ormawa data object as a JSON string for JavaScript
+                                        $ormawa_json = htmlspecialchars(json_encode($ormawa), ENT_QUOTES, 'UTF-8');
+                                        ?>
+                                        <p class="ormawa-description"><?php echo htmlspecialchars(substr($ormawa['deskripsi'], 0, 100)) . (strlen($ormawa['deskripsi']) > 100 ? '...' : ''); ?></p>
+                                        
+                                        <!-- MODIFIED: Button uses json_encode for safe data transfer -->
+                                        <button class="btn btn-primary btn-sm" onclick="showOrmawaDetail(<?php echo $ormawa_json; ?>)">
+                                            Selengkapnya
+                                        </button>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                            
+                            <!-- Placeholder untuk memastikan 3 card per slide -->
+                            <?php for($i = count($chunk); $i < 3; $i++): ?>
+                                <div class="ormawa-card" style="visibility: hidden; border: none; box-shadow: none;">
+                                    <div class="ormawa-logo">
+                                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+                                    </div>
+                                    <div class="ormawa-content">
+                                        <h5 class="ormawa-title">&nbsp;</h5>
+                                        <p class="ormawa-description">&nbsp;</p>
+                                    </div>
+                                </div>
+                            <?php endfor; ?>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="col-12">
-                        <p class="text-center">Belum ada kegiatan yang diumumkan.</p>
+                    <div class="ormawa-slide">
+                        <div class="col-12">
+                            <p class="text-center">Belum ada data Organisasi Mahasiswa.</p>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
-    </section>
 
-    <!-- Structure Section - Daftar Ormawa dengan Slider -->
-    <section id="struktur" class="structure-section">
-        <div class="container">
-            <div class="section-title">
-                <h2><span class="text-gradient">Daftar</span> Organisasi Mahasiswa</h2>
-                <p>Himpunan Mahasiswa Jurusan di Kampus</p>
+        <!-- Slider Controls -->
+        <div class="ormawa-slider-controls">
+            <span class="ormawa-arrow" onclick="changeOrmawaSlide(-1)">
+                <i class="bi bi-chevron-left"></i>
+            </span>
+            <div class="ormawa-dots">
+                <?php for($i = 0; $i < count($ormawa_chunks); $i++): ?>
+                    <span class="ormawa-dot <?php echo $i === 0 ? 'active' : ''; ?>" onclick="goToOrmawaSlide(<?php echo $i; ?>)"></span>
+                <?php endfor; ?>
             </div>
-
-            <div class="ormawa-slider-container">
-                <div class="ormawa-slider-wrapper" id="ormawaSlider">
-                    <?php if (!empty($ormawa_chunks)): ?>
-                        <?php foreach ($ormawa_chunks as $index => $chunk): ?>
-                            <div class="ormawa-slide">
-                                <?php foreach ($chunk as $ormawa): ?>
-                                    <div class="ormawa-card">
-                                        <div class="ormawa-logo">
-                                            <?php
-                                            $logo_nama_file = $ormawa['logo'];
-                                            $logo_path = $logo_dir . $logo_nama_file;
-                                            $logo_url = ($logo_nama_file && file_exists(__DIR__ . '/../../../uploads/logos/' . $logo_nama_file)) ? '../../../uploads/logos/' . $logo_nama_file : '  https://via.placeholder.com/150/667eea/ffffff?text=' . substr($ormawa['nama_ormawa'], 0, 2);
-                                            ?>
-                                            <img src="<?php echo $logo_url; ?>" alt="Logo <?php echo htmlspecialchars($ormawa['nama_ormawa']); ?>">
-                                        </div>
-                                        <div class="ormawa-content">
-                                            <h5 class="ormawa-title"><?php echo htmlspecialchars($ormawa['nama_ormawa']); ?></h5>
-                                            <p class="ormawa-description"><?php echo htmlspecialchars(substr($ormawa['deskripsi'], 0, 100)) . (strlen($ormawa['deskripsi']) > 100 ? '...' : ''); ?></p>
-                                            <button class="btn btn-primary btn-sm">Selengkapnya</button>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                                <!-- Pastikan selalu ada 3 card per slide, tambahkan placeholder jika perlu -->
-                                <?php for($i = count($chunk); $i < 3; $i++): ?>
-                                    <div class="ormawa-card" style="visibility: hidden; border: none; box-shadow: none;">
-                                        <div class="ormawa-logo">
-                                            <img src="image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
-                                        </div>
-                                        <div class="ormawa-content">
-                                            <h5 class="ormawa-title">&nbsp;</h5>
-                                            <p class="ormawa-description">&nbsp;</p>
-                                        </div>
-                                    </div>
-                                <?php endfor; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="ormawa-slide">
-                            <div class="col-12">
-                                <p class="text-center">Belum ada data Organisasi Mahasiswa.</p>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Slider Controls -->
-            <div class="ormawa-slider-controls">
-                <span class="ormawa-arrow" onclick="changeOrmawaSlide(-1)">
-                    <i class="bi bi-chevron-left"></i>
-                </span>
-                <div class="ormawa-dots">
-                    <?php for($i = 0; $i < count($ormawa_chunks); $i++): ?>
-                        <span class="ormawa-dot <?php echo $i === 0 ? 'active' : ''; ?>" onclick="goToOrmawaSlide(<?php echo $i; ?>)"></span>
-                    <?php endfor; ?>
-                </div>
-                <span class="ormawa-arrow" onclick="changeOrmawaSlide(1)">
-                    <i class="bi bi-chevron-right"></i>
-                </span>
-            </div>
+            <span class="ormawa-arrow" onclick="changeOrmawaSlide(1)">
+                <i class="bi bi-chevron-right"></i>
+            </span>
         </div>
-    </section>
+    </div>
+</section>
+
 
     <section id="kontak" class="contact-section">
         <div class="container">
@@ -487,34 +328,7 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
                 </div>
             </div>
 
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <div class="contact-form">
-                        <h4 class="text-center mb-4">Kirim Pesan</h4>
-                        <form>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <input type="text" class="form-control" placeholder="Nama Lengkap" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <input type="email" class="form-control" placeholder="Email" required>
-                                </div>
-                                <div class="col-12">
-                                    <input type="text" class="form-control" placeholder="Subjek" required>
-                                </div>
-                                <div class="col-12">
-                                    <textarea class="form-control" rows="5" placeholder="Pesan Anda" required></textarea>
-                                </div>
-                                <div class="col-12 text-center">
-                                    <button type="submit" class="btn btn-light btn-lg px-5">
-                                        <i class="bi bi-send me-2"></i>Kirim Pesan
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+
         </div>
     </section>
 
@@ -590,94 +404,9 @@ $ormawa_chunks = array_chunk_3($ormawa_list);
     </footer>
 
     <script>
-    // Inisialisasi slider
-    let currentOrmawaSlide = 0;
-    const totalOrmawaSlides = <?php echo count($ormawa_chunks); ?>; // Ambil jumlah total slide dari PHP
-    let slideInterval; // Variabel untuk menyimpan referensi interval auto-slide
-
-    // Fungsi untuk menampilkan slide tertentu menggunakan transform
-    function showOrmawaSlide(n) {
-        const slides = document.querySelectorAll('.ormawa-slide'); // Ambil semua elemen slide
-        const dots = document.querySelectorAll('.ormawa-dot');    // Ambil semua dot indikator
-
-        // Validasi jumlah slide
-        if (slides.length === 0) return;
-
-        // Perbarui currentOrmawaSlide dan pastikan tetap dalam batas
-        if (n >= slides.length) {
-            currentOrmawaSlide = 0;
-        } else if (n < 0) {
-            currentOrmawaSlide = slides.length - 1;
-        } else {
-            currentOrmawaSlide = n;
-        }
-
-        // Ambil elemen wrapper slider
-        const wrapper = document.getElementById('ormawaSlider');
-
-        // Hapus kelas 'active' dari semua dot
-        dots.forEach(dot => dot.classList.remove('active'));
-
-        // Tambahkan kelas 'active' ke dot yang sesuai dengan slide saat ini
-        if (dots[currentOrmawaSlide]) {
-            dots[currentOrmawaSlide].classList.add('active');
-        }
-
-        // Gunakan transform untuk menggeser wrapper ke slide yang benar
-        if (wrapper) {
-            wrapper.style.transform = `translateX(-${currentOrmawaSlide * 100}%)`;
-        }
-    }
-
-    // Fungsi untuk menggeser slide ke kiri atau kanan
-    function changeOrmawaSlide(n) {
-        showOrmawaSlide(currentOrmawaSlide + n);
-    }
-
-    // Fungsi untuk langsung ke slide tertentu (berdasarkan dot yang diklik)
-    function goToOrmawaSlide(n) {
-        showOrmawaSlide(n);
-    }
-
-    // Fungsi untuk memulai auto-slide
-    function startAutoSlide() {
-        if (totalOrmawaSlides <= 1) return; // Jangan auto-slide jika hanya ada satu slide
-        // Hentikan interval sebelumnya jika ada (untuk mencegah banyak interval)
-        stopAutoSlide();
-        // Buat interval baru, panggil changeOrmawaSlide(1) setiap 5 detik (5000 ms)
-        slideInterval = setInterval(() => {
-            changeOrmawaSlide(1); // Geser ke kanan
-        }, 5000); // 5000 milidetik = 5 detik
-    }
-
-    // Fungsi untuk menghentikan auto-slide
-    function stopAutoSlide() {
-        if (slideInterval) {
-            clearInterval(slideInterval);
-            slideInterval = null;
-        }
-    }
-
-    // Fungsi untuk melanjutkan auto-slide (kebalikan dari stop)
-    function resumeAutoSlide() {
-        if (totalOrmawaSlides > 1) { // Hanya lanjutkan jika lebih dari satu slide
-            startAutoSlide();
-        }
-    }
-
-    // Jalankan showOrmawaSlide(0) saat halaman dimuat untuk menampilkan slide pertama
-    document.addEventListener('DOMContentLoaded', function() {
-        showOrmawaSlide(currentOrmawaSlide);
-        startAutoSlide(); // Mulai auto-slide saat halaman selesai dimuat
-
-        // Tambahkan event listener untuk menjeda saat hover
-        const sliderContainer = document.querySelector('.ormawa-slider-container');
-        if (sliderContainer) {
-            sliderContainer.addEventListener('mouseenter', stopAutoSlide);
-            sliderContainer.addEventListener('mouseleave', resumeAutoSlide);
-        }
-    });
-</script>
+        const totalOrmawaSlides = <?php echo count($ormawa_chunks); ?>;
+    </script>
     <script src="../../../Asset/Js/LandingPage.js"></script>
+    <script src="../../../Asset/Js/Modal.js"></script>
 </body>
 </html>

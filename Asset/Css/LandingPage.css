@@ -10,7 +10,7 @@ body {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -43,7 +43,7 @@ body {
 }
 
 .nav-link:hover {
-  color: #667eea !important;
+  color: #3b82f6 !important;
 }
 
 /* Hero Slider */
@@ -270,7 +270,7 @@ section {
 }
 
 .ormawa-logo {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   padding: 40px;
   display: flex;
   align-items: center;
@@ -320,8 +320,8 @@ section {
 
 .ormawa-arrow {
   background: white;
-  border: 2px solid #667eea;
-  color: #667eea;
+  border: 2px solid #3b82f6;
+  color: #3b82f6;
   width: 45px;
   height: 45px;
   border-radius: 50%;
@@ -334,7 +334,7 @@ section {
 }
 
 .ormawa-arrow:hover {
-  background: #667eea;
+  background: #3b82f6;
   color: white;
   transform: scale(1.1);
 }
@@ -356,48 +356,133 @@ section {
 }
 
 .ormawa-dot.active {
-  background: #667eea;
+  background: #3b82f6;
   width: 30px;
   border-radius: 5px;
 }
 
-/* Contact Section */
+/* Contact Section - Professional Style */
 .contact-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #f7f9fc;
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-section .container {
+  position: relative;
+  z-index: 1;
+}
+
+.contact-section .section-title h2 {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.contact-section .section-title p {
+  color: #475569;
+  font-weight: 500;
+}
+
+/* Override inline text-white classes */
+.contact-section .text-white {
+  color: #0f172a !important;
+}
+
+.contact-section .text-white-50 {
+  color: #475569 !important;
 }
 
 .contact-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  padding: 30px;
-  border-radius: 15px;
-  text-align: center;
-  transition: all 0.3s;
+  background: #ffffff;
+  padding: 32px 28px;
+  border-radius: 8px;
+  border: 1px solid #e1e8ed;
+  transition: all 0.25s ease;
+  height: 100%;
+  position: relative;
 }
 
 .contact-card:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-5px);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
 }
 
 .contact-icon {
-  font-size: 3rem;
+  font-size: 2.25rem;
+  margin-bottom: 18px;
+  color: #3b82f6;
+  transition: color 0.25s ease;
+  display: inline-block;
+}
+
+.contact-card:hover .contact-icon {
+  color: #2563eb;
+}
+
+.contact-card h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+
+.contact-card p {
+  color: #64748b;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+/* Map/Additional Info Section (Optional Enhancement) */
+.contact-info-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 40px;
+  border: 1px solid #e2e8f0;
+  margin-top: 40px;
+}
+
+.contact-info-wrapper h4 {
+  color: #1e293b;
+  font-weight: 600;
   margin-bottom: 20px;
 }
 
-.contact-form {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  padding: 40px;
-  border-radius: 15px;
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
-.form-control {
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 10px;
-  padding: 15px;
+.info-item:hover {
+  background: #f1f5f9;
+  transform: translateX(5px);
+}
+
+.info-item i {
+  color: #3b82f6;
+  font-size: 1.3rem;
+  margin-right: 15px;
+  margin-top: 3px;
+}
+
+.info-item-content h6 {
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.info-item-content p {
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 0;
 }
 
 /* Footer */
@@ -408,7 +493,7 @@ section {
 }
 
 .footer-title {
-  color: #667eea;
+  color: #3b82f6;
   font-weight: 600;
   margin-bottom: 20px;
 }
@@ -417,7 +502,7 @@ section {
   display: inline-block;
   width: 40px;
   height: 40px;
-  background: rgba(102, 126, 234, 0.2);
+  background: rgba(59, 130, 246, 0.2);
   border-radius: 50%;
   text-align: center;
   line-height: 40px;
@@ -427,43 +512,55 @@ section {
 }
 
 .social-links a:hover {
-  background: #667eea;
+  background: #3b82f6;
   transform: translateY(-3px);
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .hero-slider {
-      height: 70vh;
+    height: 70vh;
   }
 
   .slide-title {
-      font-size: 2rem;
+    font-size: 2rem;
   }
 
   .slide-content {
-      padding: 0 20px;
+    padding: 0 20px;
   }
 
   .slider-arrow {
-      width: 40px;
-      height: 40px;
+    width: 40px;
+    height: 40px;
   }
 
   .img-landing {
-      width: 35px;
-      height: 35px;
+    width: 35px;
+    height: 35px;
   }
 
   .navbar-brand {
-      font-size: 1.2rem;
+    font-size: 1.2rem;
   }
 
   .ormawa-slide {
-      flex-direction: column;
+    flex-direction: column;
   }
 
   .ormawa-card {
-      min-width: 100%;
+    min-width: 100%;
+  }
+
+  .contact-card {
+    margin-bottom: 20px;
+  }
+  
+  .contact-icon {
+    font-size: 2rem;
+  }
+  
+  .contact-info-wrapper {
+    padding: 25px;
   }
 }
