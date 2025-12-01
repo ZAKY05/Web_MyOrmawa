@@ -32,6 +32,11 @@
             <span>Anggota</span></a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="Index.php ?page=locabsen">
+        <i class="fas fa-map-marker-alt me-2"></i>
+            <span>Bank Lokasi</span></a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=account">
             <i class="fa-solid fa-id-card"></i>
             <span>Manajemen Account</span></a>
@@ -53,7 +58,7 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">Openn Recruitmen</h6>
                 <a class="collapse-item" href="Index.php?page=oprec">Anggota Ormawa</a>
-                <a class="collapse-item" href="utilities-border.html">Panitia Event</a>
+                <a class="collapse-item" href="Index.php?page=oprec-event">Panitia Event</a>
             </div>
     </li>
 
@@ -79,7 +84,7 @@
             <span>Kompetisi</span></a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="Index.php ?page=kompetisi">
+        <a class="nav-link" href="Index.php ?page=beasiswa">
         <i class="fas fa-user-graduate"></i>
             <span>Beasiswa</span></a>
     </li>

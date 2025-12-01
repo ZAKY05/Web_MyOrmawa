@@ -13,8 +13,8 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="nama" class="form-label">Nama Lengkap</label>
-                            <input type="text" class="form-control" id="nama" name="full_name" required> 
-                            </div>
+                            <input type="text" class="form-control" id="nama" name="full_name" required>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="nim" class="form-label">NIM</label>
                             <input type="text" class="form-control" id="nim" name="nim" required>
@@ -48,32 +48,30 @@
 </div>
 
 <script>
-// Fungsi untuk reset form ke mode TAMBAH
 function resetAccountForm() {
     document.getElementById('accountForm').reset();
     document.getElementById('formAction').value = 'add';
     document.getElementById('editId').value = '';
     document.getElementById('formTitle').textContent = 'Tambah Akun Ormawa';
     
-    document.getElementById('password').setAttribute('required', 'required');
-    document.getElementById('password').closest('.mb-3').querySelector('small').textContent =
+    const passField = document.getElementById('password');
+    passField.setAttribute('required', 'required');
+    passField.closest('.mb-3').querySelector('small').textContent =
         'Wajib saat tambah. Kosongkan saat edit jika tidak ingin ganti password.';
 }
 
-// Fungsi untuk isi form dalam mode EDIT
-// Parameter username DIHAPUS
 function editAccount(id, nama, nim, email) {
     document.getElementById('formAction').value = 'edit';
     document.getElementById('editId').value = id;
     document.getElementById('nama').value = nama;
     document.getElementById('nim').value = nim;
-    // document.getElementById('username').value = username; // HAPUS INI
     document.getElementById('email').value = email;
-    document.getElementById('password').value = ''; 
+    document.getElementById('password').value = '';
     document.getElementById('formTitle').textContent = 'Edit Akun Ormawa';
     
-    document.getElementById('password').removeAttribute('required');
-    document.getElementById('password').closest('.mb-3').querySelector('small').textContent =
+    const passField = document.getElementById('password');
+    passField.removeAttribute('required');
+    passField.closest('.mb-3').querySelector('small').textContent =
         'Kosongkan jika tidak ingin mengganti password.';
     
     const modal = bootstrap.Modal.getInstance(document.getElementById('tambahAccountModal')) ||
@@ -81,10 +79,17 @@ function editAccount(id, nama, nim, email) {
     modal.show();
 }
 
-// Submit form
 function submitAccountForm() {
-    document.getElementById('accountForm').submit();
+    const form = document.getElementById('accountForm');
+    if (form.reportValidity()) {
+        const btn = document.querySelector('.modal-footer .btn-primary');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Memproses...';
+        btn.disabled = true;
+        form.submit();
+    }
 }
 
+// Reset form saat modal ditutup
 document.getElementById('tambahAccountModal').addEventListener('hidden.bs.modal', resetAccountForm);
 </script>

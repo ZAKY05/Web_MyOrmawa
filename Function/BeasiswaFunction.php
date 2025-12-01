@@ -1,161 +1,199 @@
 <?php
 session_start();
-include('../Config/ConnectDB.php');
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
+// ✅ AMAN: include dengan error handling
+if (!file_exists(__DIR__ . '/../Config/ConnectDB.php')) {
+    $_SESSION['error'] = "File koneksi tidak ditemukan.";
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+    exit();
+}
+require_once __DIR__ . '/../Config/ConnectDB.php';
+
+// ✅ Validasi koneksi & session
+if (!$koneksi || mysqli_connect_errno()) {
+    $_SESSION['error'] = "Koneksi database gagal.";
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
     exit();
 }
 
-$action = $_GET['action'] ?? '';
+if (!isset($_SESSION['user_id']) || empty($_SESSION['ormawa_id'])) {
+    $_SESSION['error'] = "Akses ditolak: login sebagai ORMawa diperlukan.";
+    header("Location: ../App/View/SuperAdmin/Login.php");
+    exit();
+}
 
-// === TAMBAH ===
-if ($action === 'add') {
+$ormawa_id = (int)$_SESSION['ormawa_id'];
+
+// === TAMBAH / EDIT ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
     $nama = trim($_POST['nama_beasiswa'] ?? '');
     $penyelenggara = trim($_POST['penyelenggara'] ?? '');
+    $periode = trim($_POST['periode'] ?? '');
+    $deadline = trim($_POST['deadline'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
+
     if (!$nama || !$penyelenggara || !$deskripsi) {
-        echo json_encode(['success' => false, 'message' => 'Nama, penyelenggara, dan deskripsi wajib diisi']);
+        $_SESSION['error'] = "Nama, penyelenggara, dan deskripsi wajib diisi.";
+        header("Location: " . $_SERVER['HTTP_REFERER']);
         exit();
     }
 
-    // Upload gambar (opsional)
+    $uploadDir = '../uploads/beasiswa/';
+    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
+        $_SESSION['error'] = "Gagal membuat folder upload.";
+        header("Location: " . $_SERVER['HTTP_REFERER']);
+        exit();
+    }
+
     $gambar = '';
+    $file_panduan = '';
+
+    // Upload gambar
     if (!empty($_FILES['gambar']['name'])) {
         $file = $_FILES['gambar'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg', 'jpeg', 'png']) && $file['size'] <= 2 * 1024 * 1024) {
-            $gambar = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file['name']);
-            if (!is_dir("../../../uploads/beasiswa/")) mkdir("../../../uploads/beasiswa/", 0777, true);
-            move_uploaded_file($file['tmp_name'], "../../../uploads/beasiswa/" . $gambar);
+        if (in_array($ext, ['jpg','jpeg','png']) && $file['size'] <= 2*1024*1024) {
+            $gambar = uniqid('img_', true) . '.' . $ext;
+            if (!move_uploaded_file($file['tmp_name'], $uploadDir . $gambar)) {
+                $_SESSION['error'] = "Gagal upload gambar.";
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit();
+            }
+        } else {
+            $_SESSION['error'] = "Format gambar tidak didukung atau ukuran > 2MB.";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit();
         }
     }
 
-    // Upload panduan (opsional)
-    $file_panduan = '';
+    // Upload panduan
     if (!empty($_FILES['file_panduan']['name'])) {
         $file = $_FILES['file_panduan'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['pdf', 'doc', 'docx']) && $file['size'] <= 10 * 1024 * 1024) {
-            $file_panduan = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file['name']);
-            if (!is_dir("../../../uploads/beasiswa/")) mkdir("../../../uploads/beasiswa/", 0777, true);
-            move_uploaded_file($file['tmp_name'], "../../../uploads/beasiswa/" . $file_panduan);
+        if (in_array($ext, ['pdf','doc','docx']) && $file['size'] <= 10*1024*1024) {
+            $file_panduan = uniqid('doc_', true) . '.' . $ext;
+            if (!move_uploaded_file($file['tmp_name'], $uploadDir . $file_panduan)) {
+                if ($gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
+                $_SESSION['error'] = "Gagal upload file panduan.";
+                header("Location: " . $_SERVER['HTTP_REFERER']);
+                exit();
+            }
+        } else {
+            if ($gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
+            $_SESSION['error'] = "Format panduan tidak didukung atau ukuran > 10MB.";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit();
         }
     }
 
-    $stmt = mysqli_prepare($koneksi, "
-        INSERT INTO beasiswa (
-            nama_beasiswa, penyelenggara, periode, deadline, deskripsi, gambar, file_panduan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    ");
-    $periode = trim($_POST['periode'] ?? '');
-    $deadline = trim($_POST['deadline'] ?? '');
-    mysqli_stmt_bind_param($stmt, "sssssss", 
-        $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
-    );
+    // Edit
+    if ($action === 'edit') {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            $_SESSION['error'] = "ID tidak valid.";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit();
+        }
 
-    $success = mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
-    
-    echo json_encode([
-        'success' => $success,
-        'message' => $success ? 'Berhasil!' : 'Gagal menyimpan'
-    ]);
-    exit();
-}
+        $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE id = ? AND id_ormawa = ?");
+        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
+        mysqli_stmt_execute($stmt);
+        $old = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
 
-// === EDIT ===
-if ($action === 'edit') {
-    $id = (int)($_POST['id'] ?? 0);
-    $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "i", $id);
-    mysqli_stmt_execute($stmt);
-    $old = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-    mysqli_stmt_close($stmt);
+        if (!$old) {
+            $_SESSION['error'] = "Beasiswa tidak ditemukan.";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit();
+        }
 
-    $nama = trim($_POST['nama_beasiswa'] ?? '');
-    $penyelenggara = trim($_POST['penyelenggara'] ?? '');
-    $deskripsi = trim($_POST['deskripsi'] ?? '');
-    if (!$nama || !$penyelenggara || !$deskripsi || !$id) {
-        echo json_encode(['success' => false, 'message' => 'Data tidak lengkap']);
+        $gambar = $gambar ?: $old['gambar'];
+        $file_panduan = $file_panduan ?: $old['file_panduan'];
+
+        if ($_FILES['gambar']['name'] && $old['gambar'] && $old['gambar'] !== $gambar) {
+            if (file_exists($uploadDir . $old['gambar'])) unlink($uploadDir . $old['gambar']);
+        }
+        if ($_FILES['file_panduan']['name'] && $old['file_panduan'] && $old['file_panduan'] !== $file_panduan) {
+            if (file_exists($uploadDir . $old['file_panduan'])) unlink($uploadDir . $old['file_panduan']);
+        }
+
+        $stmt = mysqli_prepare($koneksi, "
+            UPDATE beasiswa SET 
+                nama_beasiswa = ?, penyelenggara = ?, periode = ?, 
+                deadline = ?, deskripsi = ?, gambar = ?, file_panduan = ?
+            WHERE id = ? AND id_ormawa = ?
+        ");
+        $bind = mysqli_stmt_bind_param($stmt, "sssssssi", 
+            $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id, $ormawa_id
+        );
+    } else {
+        // Tambah
+        $stmt = mysqli_prepare($koneksi, "
+            INSERT INTO beasiswa (
+                id_ormawa, nama_beasiswa, penyelenggara, periode, 
+                deadline, deskripsi, gambar, file_panduan
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $bind = mysqli_stmt_bind_param($stmt, "isssssss", 
+            $ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
+        );
+    }
+
+    if (!$stmt || !$bind) {
+        if ($action !== 'edit' && $gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
+        if ($action !== 'edit' && $file_panduan && file_exists($uploadDir . $file_panduan)) unlink($uploadDir . $file_panduan);
+        $_SESSION['error'] = "Error query: " . mysqli_error($koneksi);
+        header("Location: " . $_SERVER['HTTP_REFERER']);
         exit();
     }
 
-    // Proses gambar
-    $gambar = $old['gambar'];
-    if (!empty($_FILES['gambar']['name'])) {
-        if ($gambar && file_exists("../../../uploads/beasiswa/" . $gambar)) unlink("../../../uploads/beasiswa/" . $gambar);
-        $file = $_FILES['gambar'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg', 'jpeg', 'png']) && $file['size'] <= 2 * 1024 * 1024) {
-            $gambar = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file['name']);
-            move_uploaded_file($file['tmp_name'], "../../../uploads/beasiswa/" . $gambar);
-        }
+    if (mysqli_stmt_execute($stmt)) {
+        $_SESSION['success'] = $action === 'edit' ? "Beasiswa berhasil diperbarui!" : "Beasiswa berhasil ditambahkan!";
+    } else {
+        if ($action !== 'edit' && $gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
+        if ($action !== 'edit' && $file_panduan && file_exists($uploadDir . $file_panduan)) unlink($uploadDir . $file_panduan);
+        $_SESSION['error'] = "Gagal menyimpan: " . mysqli_stmt_error($stmt);
     }
-
-    // Proses panduan
-    $file_panduan = $old['file_panduan'];
-    if (!empty($_FILES['file_panduan']['name'])) {
-        if ($file_panduan && file_exists("../../../uploads/beasiswa/" . $file_panduan)) unlink("../../../uploads/beasiswa/" . $file_panduan);
-        $file = $_FILES['file_panduan'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['pdf', 'doc', 'docx']) && $file['size'] <= 10 * 1024 * 1024) {
-            $file_panduan = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file['name']);
-            move_uploaded_file($file['tmp_name'], "../../../uploads/beasiswa/" . $file_panduan);
-        }
-    }
-
-    $stmt = mysqli_prepare($koneksi, "
-        UPDATE beasiswa SET 
-            nama_beasiswa = ?, 
-            penyelenggara = ?, 
-            periode = ?, 
-            deadline = ?, 
-            deskripsi = ?, 
-            gambar = ?, 
-            file_panduan = ?
-        WHERE id = ?
-    ");
-    $periode = trim($_POST['periode'] ?? '');
-    $deadline = trim($_POST['deadline'] ?? '');
-    mysqli_stmt_bind_param($stmt, "sssssssi", 
-        $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id
-    );
-
-    $success = mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
-    
-    echo json_encode([
-        'success' => $success,
-        'message' => $success ? 'Berhasil!' : 'Gagal memperbarui'
-    ]);
+
+    header("Location: " . $_SERVER['HTTP_REFERER']);
     exit();
 }
 
 // === HAPUS ===
-if ($action === 'delete' && isset($_GET['id'])) {
-    $id = (int)$_GET['id'];
-    $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "i", $id);
+if (isset($_GET['action']) && $_GET['action'] === 'delete') {
+    $id = (int)($_GET['id'] ?? 0);
+    if ($id <= 0) {
+        $_SESSION['error'] = "ID tidak valid.";
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+        exit();
+    }
+
+    $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE id = ? AND id_ormawa = ?");
+    mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
     mysqli_stmt_execute($stmt);
     $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
     mysqli_stmt_close($stmt);
 
-    $stmt = mysqli_prepare($koneksi, "DELETE FROM beasiswa WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "i", $id);
-    $success = mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
-
-    if ($success && $row) {
-        if ($row['gambar'] && file_exists("../../../uploads/beasiswa/" . $row['gambar'])) 
-            unlink("../../../uploads/beasiswa/" . $row['gambar']);
-        if ($row['file_panduan'] && file_exists("../../../uploads/beasiswa/" . $row['file_panduan'])) 
-            unlink("../../../uploads/beasiswa/" . $row['file_panduan']);
+    if ($row) {
+        $stmt = mysqli_prepare($koneksi, "DELETE FROM beasiswa WHERE id = ? AND id_ormawa = ?");
+        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
+        if (mysqli_stmt_execute($stmt)) {
+            if ($row['gambar'] && file_exists($uploadDir . $row['gambar'])) unlink($uploadDir . $row['gambar']);
+            if ($row['file_panduan'] && file_exists($uploadDir . $row['file_panduan'])) unlink($uploadDir . $row['file_panduan']);
+            $_SESSION['success'] = "Beasiswa berhasil dihapus!";
+        } else {
+            $_SESSION['error'] = "Gagal menghapus dari database.";
+        }
+        mysqli_stmt_close($stmt);
+    } else {
+        $_SESSION['error'] = "Beasiswa tidak ditemukan.";
     }
 
-    echo json_encode(['success' => $success]);
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
     exit();
 }
 
-echo json_encode(['success' => false, 'message' => 'Aksi tidak dikenali']);
+header("Location: ../Admin/Beasiswa.php");
+exit();
 ?>

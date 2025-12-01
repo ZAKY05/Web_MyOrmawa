@@ -1,10 +1,9 @@
 <?php
-session_start(); // Diperlukan karena diakses langsung (bukan via Index.php)
-
+session_start();
 include('../Config/ConnectDB.php');
 
-// Pastikan user login
 if (!isset($_SESSION['user_id'])) {
+    $_SESSION['error'] = "Silakan login terlebih dahulu.";
     header("Location: ../App/View/SuperAdmin/Login.php");
     exit();
 }
@@ -13,183 +12,198 @@ $user_level = $_SESSION['user_level'];
 $ormawa_id_session = $_SESSION['ormawa_id'] ?? 0;
 $user_id_session = $_SESSION['user_id'];
 
-// Direktori upload
 $target_dir = "../uploads/dokumen/";
 if (!is_dir($target_dir)) {
-    mkdir($target_dir, 0777, true);
+    mkdir($target_dir, 0755, true);
 }
 
-// --- FUNGSI: TAMBAH ---
+// Helper
+function redirectDocument() {
+    header("Location: ../App/View/Admin/Index.php?page=doc");
+    exit;
+}
+
+// --- TAMBAH ---
 if (isset($_POST['action']) && $_POST['action'] === 'add') {
     $nama_dokumen = trim($_POST['nama_dokumen'] ?? '');
     $jenis_dokumen = trim($_POST['jenis_dokumen'] ?? '');
     $id_ormawa = (int)($_POST['id_ormawa'] ?? 0);
-    $id_user = (int)($_POST['id_user'] ?? 0);
 
-    // Validasi session & izin
-    if ($user_level === 2 && $id_ormawa !== $ormawa_id_session) {
-        header("Location: ../App/View/Admin/Index.php?page=document&error=akses_ditolak");
-        exit;
-    }
-    if ($user_level === 2 && $id_user !== $user_id_session) {
-        // Opsional: batasi hanya bisa upload dokumen atas nama diri sendiri
-        $id_user = $user_id_session;
+    if ($user_level === 2) {
+        $id_ormawa = $ormawa_id_session;
     }
 
-    // Validasi dasar
     if (empty($nama_dokumen) || empty($jenis_dokumen) || $id_ormawa <= 0) {
-        header("Location: ../App/View/Admin/Index.php?page=document&error=data_kosong");
-        exit;
+        $_SESSION['error'] = "Semua field wajib diisi!";
+        redirectDocument();
     }
 
     // Upload file
-    $file_path = '';
-    $uploadOk = 1;
-
-    if (!empty($_FILES['file_dokumen']['name'])) {
-        $file = $_FILES['file_dokumen'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'txt'];
-        
-        if (!in_array($ext, $allowed) || $file['size'] > 10 * 1024 * 1024) {
-            $uploadOk = 0;
-        } else {
-            $file_path = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file['name']);
-            if (!move_uploaded_file($file['tmp_name'], $target_dir . $file_path)) {
-                $uploadOk = 0;
-            }
-        }
+    if (empty($_FILES['file_dokumen']['name'])) {
+        $_SESSION['error'] = "File dokumen wajib diunggah!";
+        redirectDocument();
     }
 
-    if ($uploadOk == 0) {
-        header("Location: ../App/View/Admin/Index.php?page=document&error=upload_gagal");
-        exit;
+    $file = $_FILES['file_dokumen'];
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'txt'];
+    $maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!in_array($ext, $allowed) || $file['size'] > $maxSize) {
+        $_SESSION['error'] = "File tidak didukung atau ukuran > 10MB.";
+        redirectDocument();
     }
+
+    $file_path = uniqid('doc_') . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file['name']);
+    $full_path = $target_dir . $file_path;
+
+    if (!move_uploaded_file($file['tmp_name'], $full_path)) {
+        $_SESSION['error'] = "Gagal mengunggah file.";
+        redirectDocument();
+    }
+
+    // Hitung ukuran (KB)
+    $ukuran_kb = round(filesize($full_path) / 1024, 2);
 
     // Simpan ke DB
-    $tanggal = date('Y-m-d');
-    $stmt = mysqli_prepare($koneksi, "INSERT INTO dokumen (nama_dokumen, jenis_dokumen, tanggal_upload, id_ormawa, id_user, file_path) VALUES (?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, "sssiis", $nama_dokumen, $jenis_dokumen, $tanggal, $id_ormawa, $id_user, $file_path);
+    $tanggal = date('Y-m-d H:i:s');
+    $stmt = $koneksi->prepare(
+        "INSERT INTO dokumen (nama_dokumen, jenis_dokumen, tanggal_upload, id_ormawa, id_user, file_path, ukuran_file) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
 
-    if (mysqli_stmt_execute($stmt)) {
-        header("Location: /App/View/Admin/Index.php?page=document&success=ditambah");
+    $stmt->bind_param("sssiisd", $nama_dokumen, $jenis_dokumen, $tanggal, $id_ormawa, $user_id_session, $file_path, $ukuran_kb);
+
+    if ($stmt->execute()) {
+        $_SESSION['success'] = "Dokumen berhasil ditambahkan!";
     } else {
-        header("Location: /App/View/Admin/Index.php?page=document&error=query_gagal");
+        unlink($full_path); // hapus file jika gagal insert
+        $_SESSION['error'] = "Gagal menyimpan data dokumen.";
     }
-    mysqli_stmt_close($stmt);
-    exit;
+    $stmt->close();
+    redirectDocument();
 }
 
-// --- FUNGSI: EDIT ---
+// --- EDIT ---
 if (isset($_POST['action']) && $_POST['action'] === 'edit') {
     $id = (int)($_POST['id'] ?? 0);
-    if (!$id) {
-        header("Location: /App/View/Admin/Index.php?page=document&error=id_invalid");
-        exit;
+    if ($id <= 0) {
+        $_SESSION['error'] = "ID dokumen tidak valid.";
+        redirectDocument();
     }
 
-    // Ambil data dokumen untuk validasi kepemilikan
-    $stmt_check = mysqli_prepare($koneksi, "SELECT id_ormawa FROM dokumen WHERE id = ?");
-    mysqli_stmt_bind_param($stmt_check, "i", $id);
-    mysqli_stmt_execute($stmt_check);
-    $result = mysqli_stmt_get_result($stmt_check);
-    $doc = mysqli_fetch_assoc($result);
-    mysqli_stmt_close($stmt_check);
+    // Validasi kepemilikan
+    $stmt_check = $koneksi->prepare("SELECT id_ormawa, file_path FROM dokumen WHERE id = ?");
+    $stmt_check->bind_param("i", $id);
+    $stmt_check->execute();
+    $doc = $stmt_check->get_result()->fetch_assoc();
+    $stmt_check->close();
 
     if (!$doc) {
-        header("Location: /App/View/Admin/Index.php?page=document&error=tidak_ditemukan");
-        exit;
+        $_SESSION['error'] = "Dokumen tidak ditemukan.";
+        redirectDocument();
     }
 
-    // Validasi akses
     if ($user_level === 2 && $doc['id_ormawa'] !== $ormawa_id_session) {
-        header("Location: /App/View/Admin/Index.php?page=document&error=akses_ditolak");
-        exit;
+        $_SESSION['error'] = "Anda tidak berhak mengedit dokumen ini.";
+        redirectDocument();
     }
 
     $nama_dokumen = trim($_POST['nama_dokumen'] ?? '');
     $jenis_dokumen = trim($_POST['jenis_dokumen'] ?? '');
-    $id_ormawa = ($user_level === 1) ? (int)($_POST['id_ormawa'] ?? $doc['id_ormawa']) : $ormawa_id_session;
-    $id_user = $user_id_session; // Admin hanya bisa edit atas nama diri sendiri
-
     if (empty($nama_dokumen) || empty($jenis_dokumen)) {
-        header("Location: /App/View/Admin/Index.php?page=document&error=data_kosong");
-        exit;
+        $_SESSION['error'] = "Nama dan jenis dokumen wajib diisi!";
+        redirectDocument();
     }
 
-    // Ambil file lama
-    $stmt_get = mysqli_prepare($koneksi, "SELECT file_path FROM dokumen WHERE id = ?");
-    mysqli_stmt_bind_param($stmt_get, "i", $id);
-    mysqli_stmt_execute($stmt_get);
-    $old_file = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_get))['file_path'] ?? '';
-    mysqli_stmt_close($stmt_get);
+    $old_file = $doc['file_path'];
+    $new_file_path = $old_file;
 
-    $file_path = $old_file;
-
-    // Proses upload file baru (jika ada)
+    // Upload file baru (opsional)
     if (!empty($_FILES['file_dokumen']['name'])) {
-        if ($old_file && file_exists($target_dir . $old_file)) {
-            unlink($target_dir . $old_file);
-        }
-
         $file = $_FILES['file_dokumen'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'txt'];
-        
         if (in_array($ext, $allowed) && $file['size'] <= 10 * 1024 * 1024) {
-            $file_path = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file['name']);
-            move_uploaded_file($file['tmp_name'], $target_dir . $file_path);
+            // Hapus file lama
+            if ($old_file && file_exists($target_dir . $old_file)) {
+                unlink($target_dir . $old_file);
+            }
+            // Simpan baru
+            $new_file_path = uniqid('doc_') . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file['name']);
+            move_uploaded_file($file['tmp_name'], $target_dir . $new_file_path);
+            $ukuran_kb = round(filesize($target_dir . $new_file_path) / 1024, 2);
+        } else {
+            $_SESSION['error'] = "File tidak valid. Gunakan PDF/DOC/JPG/PNG ≤10MB.";
+            redirectDocument();
         }
+    } else {
+        // Jika tidak ganti file, ambil ukuran lama
+        $stmt_size = $koneksi->prepare("SELECT ukuran_file FROM dokumen WHERE id = ?");
+        $stmt_size->bind_param("i", $id);
+        $stmt_size->execute();
+        $ukuran_kb = $stmt_size->get_result()->fetch_assoc()['ukuran_file'] ?? 0;
+        $stmt_size->close();
     }
 
     // Update DB
-    $stmt = mysqli_prepare($koneksi, "UPDATE dokumen SET nama_dokumen = ?, jenis_dokumen = ?, id_ormawa = ?, id_user = ?, file_path = ? WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "ssiiis", $nama_dokumen, $jenis_dokumen, $id_ormawa, $id_user, $file_path, $id);
+    $stmt = $koneksi->prepare(
+        "UPDATE dokumen SET nama_dokumen = ?, jenis_dokumen = ?, file_path = ?, ukuran_file = ? WHERE id = ?"
+    );
+    $stmt->bind_param("sssdi", $nama_dokumen, $jenis_dokumen, $new_file_path, $ukuran_kb, $id);
 
-    if (mysqli_stmt_execute($stmt)) {
-        header("Location: /App/View/Admin/Index.php?page=document&success=diedit");
+    if ($stmt->execute()) {
+        $_SESSION['success'] = "Dokumen berhasil ditambahkan!";
+        $stmt->close(); // ← pastikan close dulu
+        redirectDocument(); // ← baru redirect
     } else {
-        header("Location: /App/View/Admin/Index.php?page=document&error=query_gagal");
+        $stmt->close();
+        $_SESSION['error'] = "Gagal menyimpan.";
+        redirectDocument();
     }
-    mysqli_stmt_close($stmt);
-    exit;
 }
 
-// --- FUNGSI: HAPUS ---
+// --- HAPUS ---
 if (isset($_GET['action']) && $_GET['action'] === 'delete') {
     $id = (int)($_GET['id'] ?? 0);
-    if (!$id) exit;
-
-    // Ambil info dokumen
-    $stmt_check = mysqli_prepare($koneksi, "SELECT id_ormawa, file_path FROM dokumen WHERE id = ?");
-    mysqli_stmt_bind_param($stmt_check, "i", $id);
-    mysqli_stmt_execute($stmt_check);
-    $doc = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt_check));
-    mysqli_stmt_close($stmt_check);
-
-    if (!$doc) exit;
-
-    // Validasi akses
-    if ($user_level === 2 && $doc['id_ormawa'] !== $ormawa_id_session) {
-        header("Location: /App/View/Admin/Index.php?page=document&error=akses_ditolak");
-        exit;
+    if ($id <= 0) {
+        $_SESSION['error'] = "ID tidak valid.";
+        redirectDocument();
     }
 
-    // Hapus file
-    if ($doc['file_path'] && file_exists($target_dir . $doc['file_path'])) {
-        unlink($target_dir . $doc['file_path']);
+    $stmt_check = $koneksi->prepare("SELECT id_ormawa, file_path FROM dokumen WHERE id = ?");
+    $stmt_check->bind_param("i", $id);
+    $stmt_check->execute();
+    $doc = $stmt_check->get_result()->fetch_assoc();
+    $stmt_check->close();
+
+    if (!$doc) {
+        $_SESSION['error'] = "Dokumen tidak ditemukan.";
+        redirectDocument();
+    }
+
+    if ($user_level === 2 && $doc['id_ormawa'] !== $ormawa_id_session) {
+        $_SESSION['error'] = "Akses ditolak.";
+        redirectDocument();
+    }
+
+    // Hapus file fisik
+    $file_path = $target_dir . $doc['file_path'];
+    if (file_exists($file_path)) {
+        unlink($file_path);
     }
 
     // Hapus dari DB
-    $stmt = mysqli_prepare($koneksi, "DELETE FROM dokumen WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, "i", $id);
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
-
-    header("Location: /App/View/Admin/Index.php?page=document&success=dihapus");
-    exit;
+    $stmt = $koneksi->prepare("DELETE FROM dokumen WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute() && $stmt->affected_rows > 0) {
+        $_SESSION['success'] = "Dokumen berhasil dihapus!";
+    } else {
+        $_SESSION['error'] = "Gagal menghapus dokumen.";
+    }
+    $stmt->close();
+    redirectDocument();
 }
 
-header("Location: /App/View/Admin/Index.php?page=document");
-exit;
+redirectDocument();
 ?>

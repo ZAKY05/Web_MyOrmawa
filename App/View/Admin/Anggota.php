@@ -46,23 +46,6 @@ $anggota_list = getAnggotaData($koneksi, $ormawa_id);
         </button>
     </div>
 
-    <!-- Alert Messages dari Session -->
-    <?php if (isset($_SESSION['success'])): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <?= htmlspecialchars($_SESSION['success']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php unset($_SESSION['success']); ?>
-    <?php endif; ?>
-
-    <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <?= htmlspecialchars($_SESSION['error']); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php unset($_SESSION['error']); ?>
-    <?php endif; ?>
-
     <!-- DataTabels Example -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
@@ -107,11 +90,9 @@ $anggota_list = getAnggotaData($koneksi, $ormawa_id);
                                             )'>
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <a href="../../../Function/AnggotaFunction.php?action=delete&id=<?= $anggota['id']; ?>"
-                                           class="btn btn-danger btn-circle btn-sm"
-                                           onclick="return confirm('Yakin hapus anggota ini?')">
+                                        <button class="btn btn-danger btn-circle btn-sm delete-btn" data-id="<?= (int)$anggota['id']; ?>">
                                             <i class="fas fa-trash"></i>
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -130,4 +111,81 @@ $anggota_list = getAnggotaData($koneksi, $ormawa_id);
 
 <?php include('../FormData/TambahAnggota.php'); ?>
 <?php include('Footer.php'); ?>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// Tampilkan notifikasi dari session (setelah redirect)
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if (isset($_SESSION['success'])): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: '<?= addslashes($_SESSION['success']); ?>',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        <?php unset($_SESSION['success']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error'])): ?>
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal!',
+            text: '<?= addslashes($_SESSION['error']); ?>',
+            timer: 3000,
+            showConfirmButton: false
+        });
+        <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+});
+
+// Hapus dengan SweetAlert2 + fetch
+document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const id = this.getAttribute('data-id');
+
+        Swal.fire({
+            title: 'Yakin hapus?',
+            text: "Data yang dihapus tidak bisa dikembalikan!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Tampilkan loading
+                Swal.fire({
+                    title: 'Menghapus...',
+                    text: 'Tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                fetch(`../../../Function/AnggotaFunction.php?action=delete&id=${id}`)
+                .then(response => {
+                    // Karena PHP redirect, kita cek apakah status 200 atau redirect
+                    if (response.redirected) {
+                        // Redirect ke URL tujuan (akan trigger notifikasi dari session)
+                        window.location.href = response.url;
+                    } else {
+                        // Error: misal ID tidak ditemukan
+                        Swal.fire('Gagal!', 'Tidak dapat menghapus data.', 'error');
+                    }
+                })
+                .catch(() => {
+                    Swal.fire('Error!', 'Terjadi kesalahan jaringan.', 'error');
+                });
+            }
+        });
+    });
+});
+</script>
+
 <?php mysqli_close($koneksi); ?>

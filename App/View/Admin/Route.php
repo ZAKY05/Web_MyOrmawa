@@ -10,6 +10,8 @@ $routes = [
     'doc'=>'Document.php',
     'anggota'=>'Anggota.php',
     'account'=>'Account.php',
-    'kompetisi'=>'Kompetisi.php'
+    'kompetisi'=>'Kompetisi.php',
+    'locabsen'=>'LokasiAbsen.php',
+    'beasiswa'=>'Beasiswa.php'
 ];
 ?>

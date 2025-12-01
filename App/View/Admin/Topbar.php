@@ -158,7 +158,7 @@ $ormawa_nama = isset($_SESSION['ormawa_nama']) ? htmlspecialchars($_SESSION['orm
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
-                <a class="btn btn-primary" href="/MyOrmawa/Function/LoginFunction.php?logout=true">
+                <a class="btn btn-primary" href="../../../Function/LoginFunction.php?logout=true">
                     <i class="fas fa-sign-out-alt fa-sm"></i> Logout
                 </a>
             </div>

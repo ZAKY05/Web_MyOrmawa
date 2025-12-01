@@ -19,6 +19,7 @@
                         <label for="departemen" class="form-label">Departemen</label>
                         <input type="text" class="form-control" id="departemen" name="departemen" required>
                     </div>
+
                     <div class="mb-3">
                         <label for="jabatan" class="form-label">Jabatan</label>
                         <input type="text" class="form-control" id="jabatan" name="jabatan" required>
@@ -26,7 +27,7 @@
 
                     <div class="mb-3">
                         <label for="no_telpon" class="form-label">No Telepon</label>
-                        <input type="text" class="form-control" id="no_telpon" name="no_telpon" required>
+                        <input type="tel" class="form-control" id="no_telpon" name="no_telpon" required>
                     </div>
 
                     <div class="mb-3">
@@ -52,19 +53,29 @@ function resetForm() {
 }
 
 function submitForm() {
-    document.getElementById('anggotaForm').submit();
+    const form = document.getElementById('anggotaForm');
+    if (form.reportValidity()) {
+        // Opsional: tampilkan loading di tombol
+        const btn = document.querySelector('.modal-footer .btn-primary');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Memproses...';
+        btn.disabled = true;
+
+        form.submit(); // Submit biasa (akan redirect & muncul notifikasi SweetAlert otomatis)
+    }
 }
 
-// Fungsi edit (bisa dipakai nanti)
-function editAnggota(id, nama, departemen, no_telpon, prodi) {
+// ✅ Perbaikan: tambahkan parameter 'jabatan' yang sebelumnya hilang!
+function editAnggota(id, nama, departemen, jabatan, no_telpon, prodi) {
     document.getElementById('formAction').value = 'edit';
     document.getElementById('editId').value = id;
     document.getElementById('nama').value = nama;
     document.getElementById('departemen').value = departemen;
+    document.getElementById('jabatan').value = jabatan;   // ✅ ini ditambahkan
     document.getElementById('no_telpon').value = no_telpon;
     document.getElementById('prodi').value = prodi;
     document.getElementById('modalFormLabel').textContent = 'Edit Anggota';
-    // Buka modal
+
     const modal = new bootstrap.Modal(document.getElementById('modalForm'));
     modal.show();
 }

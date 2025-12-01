@@ -1,20 +1,24 @@
 <?php
-// Pastikan session start untuk ambil ID Ormawa yang sedang login
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 include '../Config/ConnectDB.php';
 
-// Ambil ID Ormawa yang sedang login (PENTING)
 $current_ormawa_id = $_SESSION['user']['id'] ?? 0;
 
-// Keamanan: Jika tidak ada ID login, tolak akses
 if ($current_ormawa_id == 0) {
-    header("Location: ../SuperAdmin/Login.php"); // Atau halaman error
+    $_SESSION['error'] = "Session kadaluarsa. Silakan login ulang.";
+    header("Location: ../SuperAdmin/Login.php");
     exit;
 }
 
-// --- FUNGSI: Menambah Anggota ---
+// Helper: Redirect ke halaman Account
+function redirectAccount() {
+    header("Location: ../App/View/Admin/Account.php");
+    exit;
+}
+
+// --- TAMBAH ---
 if (isset($_POST['action']) && $_POST['action'] === 'add') {
     $nama     = trim($_POST['full_name'] ?? '');
     $nim      = trim($_POST['nim'] ?? '');
@@ -22,52 +26,61 @@ if (isset($_POST['action']) && $_POST['action'] === 'add') {
     $password = $_POST['password'] ?? '';
 
     if (empty($nama) || empty($nim) || empty($email) || empty($password)) {
-        header("Location: ../App/View/SuperAdmin/Account.php?error=form_kosong");
-        exit;
+        $_SESSION['error'] = "Semua field wajib diisi!";
+        redirectAccount();
     }
 
-    // Cek Email Duplikat (Opsional tapi disarankan)
-    // ... code validasi email ...
+    // Cek duplikat email (opsional tapi penting)
+    $checkEmail = $koneksi->prepare("SELECT id FROM user WHERE email = ? AND id_ormawa = ?");
+    $checkEmail->bind_param("si", $email, $current_ormawa_id);
+    $checkEmail->execute();
+    if ($checkEmail->get_result()->num_rows > 0) {
+        $_SESSION['error'] = "Email sudah terdaftar di ormawa ini.";
+        redirectAccount();
+    }
+    $checkEmail->close();
 
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
-
-    // INSERT DATA: Perhatikan kolom id_ormawa diisi $current_ormawa_id
-    // Level di set 3 (Anggota)
     $stmt = $koneksi->prepare("INSERT INTO user (full_name, nim, email, password, level, id_ormawa) VALUES (?, ?, ?, ?, 3, ?)");
     
     if ($stmt) {
         $stmt->bind_param("ssssi", $nama, $nim, $email, $password_hash, $current_ormawa_id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Akun anggota berhasil ditambahkan!";
+        } else {
+            $_SESSION['error'] = "Gagal menyimpan data: " . $stmt->error;
+        }
         $stmt->close();
-
-        header("Location: ../App/View/Admin/Account.php?success=anggota_ditambah");
-        exit;
     } else {
-        header("Location: ../App/View/SuperAdmin/Account.php?error=query_gagal");
-        exit;
+        $_SESSION['error'] = "Gagal menyiapkan query.";
     }
+
+    redirectAccount();
 }
 
-// --- FUNGSI: Edit Anggota ---
+// --- EDIT ---
 if (isset($_POST['action']) && $_POST['action'] === 'edit') {
     $id       = (int)($_POST['id'] ?? 0);
     $nama     = trim($_POST['full_name'] ?? '');
     $nim      = trim($_POST['nim'] ?? '');
     $email    = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
 
-    // Validasi Keamanan: Pastikan yang diedit adalah anggota milik Ormawa ini
-    // Cek apakah user ID tersebut memiliki id_ormawa = login ID
+    if ($id <= 0 || empty($nama) || empty($nim) || empty($email)) {
+        $_SESSION['error'] = "Data tidak valid.";
+        redirectAccount();
+    }
+
+    // Validasi kepemilikan
     $check = $koneksi->prepare("SELECT id FROM user WHERE id = ? AND id_ormawa = ?");
     $check->bind_param("ii", $id, $current_ormawa_id);
     $check->execute();
     if ($check->get_result()->num_rows === 0) {
-         header("Location: ../App/View/SuperAdmin/Account.php?error=akses_ditolak");
-         exit;
+        $_SESSION['error'] = "Anda tidak berhak mengedit akun ini.";
+        redirectAccount();
     }
     $check->close();
 
-    // Logic update sama seperti sebelumnya...
+    $password = $_POST['password'] ?? '';
     if (!empty($password)) {
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = $koneksi->prepare("UPDATE user SET full_name = ?, nim = ?, email = ?, password = ? WHERE id = ?");
@@ -76,31 +89,36 @@ if (isset($_POST['action']) && $_POST['action'] === 'edit') {
         $stmt = $koneksi->prepare("UPDATE user SET full_name = ?, nim = ?, email = ? WHERE id = ?");
         $stmt->bind_param("sssi", $nama, $nim, $email, $id);
     }
-    
-    if ($stmt) {
-        $stmt->execute();
-        header("Location: ../App/View/SuperAdmin/Account.php?success=anggota_diperbarui");
+
+    if ($stmt && $stmt->execute()) {
+        $_SESSION['success'] = "Data akun berhasil diperbarui!";
     } else {
-        header("Location: ../App/View/SuperAdmin/Account.php?error=gagal_update");
+        $_SESSION['error'] = "Gagal memperbarui data.";
     }
-    exit;
+    redirectAccount();
 }
 
-// --- FUNGSI: Hapus Anggota ---
+// --- HAPUS ---
 if (isset($_GET['action']) && $_GET['action'] === 'delete') {
     $id = (int)($_GET['id'] ?? 0);
 
-    // Keamanan: Hanya hapus jika id_ormawa cocok dengan yang login
+    if ($id <= 0) {
+        $_SESSION['error'] = "ID tidak valid.";
+        redirectAccount();
+    }
+
     $stmt = $koneksi->prepare("DELETE FROM user WHERE id = ? AND id_ormawa = ?");
     $stmt->bind_param("ii", $id, $current_ormawa_id);
     $stmt->execute();
 
     if ($stmt->affected_rows > 0) {
-        header("Location: ../App/View/SuperAdmin/Account.php?deleted=berhasil");
+        $_SESSION['success'] = "Akun anggota berhasil dihapus!";
     } else {
-        // Jika tidak ada yg terhapus, mungkin ID salah atau mencoba hapus punya ormawa lain
-        header("Location: ../App/View/SuperAdmin/Account.php?error=gagal_hapus");
+        $_SESSION['error'] = "Gagal menghapus. Pastikan akun milik Anda.";
     }
-    exit;
+    redirectAccount();
 }
+
+// Fallback
+redirectAccount();
 ?>
