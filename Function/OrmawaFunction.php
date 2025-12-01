@@ -1,198 +1,360 @@
 <?php
+/**
+ * ========================================
+ * ORMAWA FUNCTION - BACKEND CRUD
+ * ========================================
+ * File ini menangani semua operasi CRUD untuk tabel ormawa
+ * - CREATE (Tambah Ormawa)
+ * - UPDATE (Edit Ormawa)
+ * - DELETE (Hapus Ormawa)
+ * * Author: System
+ * Last Update: 2025
+ * ========================================
+ */
+
 include '../Config/ConnectDB.php';
 
-
-
-// --- FUNGSI: Menambah Ormawa ---
+// ========================================
+// FUNGSI: TAMBAH ORMAWA (CREATE)
+// ========================================
 if (isset($_POST['action']) && $_POST['action'] === 'add') {
+    
+    // Ambil data dari form dan sanitasi
     $nama = trim($_POST['nama_ormawa'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
+    $kategori = trim($_POST['kategori'] ?? '');
+    $visi = trim($_POST['visi'] ?? '');
+    $misi = trim($_POST['misi'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $contact_person = trim($_POST['contact_person'] ?? '');
 
+    // Validasi data wajib
     if (empty($nama)) {
         header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=nama_kosong");
         exit;
     }
 
-    $logo_nama = '';
-    if (isset($_FILES['logo']) && $_FILES['logo']['error'] == UPLOAD_ERR_OK) {
-        $target_dir = "../uploads/logos/"; 
-        $gambar_nama_asli = basename($_FILES["logo"]["name"]);
-        $target_file = $target_dir . $gambar_nama_asli;
-        $uploadOk = 1;
-        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+    if (empty($kategori)) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=kategori_kosong");
+        exit;
+    }
 
-        // Cek apakah file adalah gambar
+    // ========================================
+    // HANDLE UPLOAD LOGO
+    // ========================================
+    $logo_nama = '';
+    
+    if (isset($_FILES['logo']) && $_FILES['logo']['error'] == UPLOAD_ERR_OK) {
+        $target_dir = "../uploads/logos/";
+        
+        // Cek dan buat folder jika belum ada
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        
+        $gambar_nama_asli = basename($_FILES["logo"]["name"]);
+        $imageFileType = strtolower(pathinfo($gambar_nama_asli, PATHINFO_EXTENSION));
+        $uploadOk = 1;
+        $error_message = '';
+
+        // Validasi 1: Cek apakah file adalah gambar
         $check = getimagesize($_FILES["logo"]["tmp_name"]);
         if($check === false) {
             $uploadOk = 0;
             $error_message = "File bukan gambar.";
         }
 
-        // Cek ukuran file (opsional, misalnya max 5MB)
-        if ($_FILES["logo"]["size"] > 5000000) { // 5MB
+        // Validasi 2: Cek ukuran file (maksimal 5MB)
+        if ($_FILES["logo"]["size"] > 5000000) {
             $uploadOk = 0;
-            $error_message = "File logo terlalu besar.";
+            $error_message = "File logo terlalu besar (maksimal 5MB).";
         }
 
-        // Batasi format file
+        // Validasi 3: Batasi format file yang diperbolehkan
         $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
         if(!in_array($imageFileType, $allowed_extensions)) {
             $uploadOk = 0;
             $error_message = "Hanya file JPG, JPEG, PNG & GIF yang diperbolehkan.";
         }
 
-        // Jika semua cek lolos
+        // Proses upload jika validasi lolos
         if ($uploadOk == 1) {
-            // Generate nama unik untuk mencegah konflik dan karakter khusus
+            // Generate nama unik untuk mencegah konflik nama file
             $logo_nama = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $gambar_nama_asli);
             $target_file = $target_dir . $logo_nama;
 
+            // Upload file
             if (!move_uploaded_file($_FILES["logo"]["tmp_name"], $target_file)) {
+                error_log("Upload Error: Gagal memindahkan file ke " . $target_file);
                 $error_message = "Terjadi kesalahan saat mengupload logo.";
-                $uploadOk = 0;
                 $logo_nama = '';
             }
         } else {
-            if (!isset($error_message)) $error_message = "Upload logo gagal.";
-            $logo_nama = '';
+            // Log error jika upload gagal
+            error_log("Upload Error: " . $error_message);
         }
     }
 
-    $stmt = $koneksi->prepare("INSERT INTO ormawa (nama_ormawa, deskripsi, logo) VALUES (?, ?, ?)");
+    // ========================================
+    // INSERT DATA KE DATABASE
+    // ========================================
+    $stmt = $koneksi->prepare("INSERT INTO ormawa (nama_ormawa, deskripsi, kategori, visi, misi, email, contact_person, logo, created_at, update_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+    
     if ($stmt) {
-        $stmt->bind_param("sss", $nama, $deskripsi, $logo_nama);
-        $stmt->execute();
-        $stmt->close();
-
-        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&success=form");
-        exit;
+        $stmt->bind_param("ssssssss", $nama, $deskripsi, $kategori, $visi, $misi, $email, $contact_person, $logo_nama);
+        
+        if ($stmt->execute()) {
+            $stmt->close();
+            header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&success=form");
+            exit;
+        } else {
+            error_log("Database Error (Insert): " . $stmt->error);
+            $stmt->close();
+            
+            // Hapus file logo yang sudah diupload jika insert gagal
+            if ($logo_nama && file_exists($target_dir . $logo_nama)) {
+                unlink($target_dir . $logo_nama);
+            }
+            
+            header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
+            exit;
+        }
     } else {
-        error_log("Error inserting ormawa: " . $koneksi->error);
+        error_log("Database Error (Prepare Insert): " . $koneksi->error);
+        
+        // Hapus file logo yang sudah diupload jika prepare gagal
+        if ($logo_nama && file_exists($target_dir . $logo_nama)) {
+            unlink($target_dir . $logo_nama);
+        }
+        
         header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
         exit;
     }
 }
 
-// --- FUNGSI: Memperbarui Ormawa ---
+// ========================================
+// FUNGSI: EDIT ORMAWA (UPDATE)
+// ========================================
 if (isset($_POST['action']) && $_POST['action'] === 'edit') {
+    
+    // Ambil data dari form dan sanitasi
     $id = (int)($_POST['id'] ?? 0);
     $nama = trim($_POST['nama_ormawa'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
+    $kategori = trim($_POST['kategori'] ?? '');
+    $visi = trim($_POST['visi'] ?? '');
+    $misi = trim($_POST['misi'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $contact_person = trim($_POST['contact_person'] ?? '');
 
+    // Validasi data
     if (!$id || empty($nama)) {
         header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=invalid_data");
         exit;
     }
 
-    // Ambil logo lama dari database
+    if (empty($kategori)) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=kategori_kosong");
+        exit;
+    }
+
+    // ========================================
+    // AMBIL DATA LAMA DARI DATABASE
+    // ========================================
     $stmt = $koneksi->prepare("SELECT logo FROM ormawa WHERE id = ?");
+    
+    if (!$stmt) {
+        error_log("Database Error (Prepare Select): " . $koneksi->error);
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
+        exit;
+    }
+    
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
+    
+    if ($result->num_rows == 0) {
+        $stmt->close();
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=data_not_found");
+        exit;
+    }
+    
     $row = $result->fetch_assoc();
     $logo_lama = $row['logo'] ?? '';
     $stmt->close();
 
-    $logo_nama = $logo_lama;
+    // ========================================
+    // HANDLE UPLOAD LOGO BARU (OPSIONAL)
+    // ========================================
+    $logo_nama = $logo_lama; // Default: gunakan logo lama
+    
     if (isset($_FILES['logo']) && $_FILES['logo']['error'] == UPLOAD_ERR_OK && $_FILES['logo']['size'] > 0) {
-        $target_dir = "../uploads/logos/"; // Path relatif dari App/Function/
+        $target_dir = "../uploads/logos/";
+        
+        // Cek dan buat folder jika belum ada
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        
         $gambar_nama_asli_baru = basename($_FILES["logo"]["name"]);
-        $target_file = $target_dir . $gambar_nama_asli_baru;
+        $imageFileType = strtolower(pathinfo($gambar_nama_asli_baru, PATHINFO_EXTENSION));
         $uploadOk = 1;
-        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+        $error_message = '';
 
-        // Cek apakah file adalah gambar
+        // Validasi 1: Cek apakah file adalah gambar
         $check = getimagesize($_FILES["logo"]["tmp_name"]);
         if($check === false) {
             $uploadOk = 0;
             $error_message = "File bukan gambar.";
         }
 
-        // Cek ukuran file (opsional, misalnya max 5MB)
-        if ($_FILES["logo"]["size"] > 5000000) { // 5MB
+        // Validasi 2: Cek ukuran file (maksimal 5MB)
+        if ($_FILES["logo"]["size"] > 5000000) {
             $uploadOk = 0;
-            $error_message = "File logo terlalu besar.";
+            $error_message = "File logo terlalu besar (maksimal 5MB).";
         }
 
-        // Batasi format file
+        // Validasi 3: Batasi format file yang diperbolehkan
         $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif'];
         if(!in_array($imageFileType, $allowed_extensions)) {
             $uploadOk = 0;
             $error_message = "Hanya file JPG, JPEG, PNG & GIF yang diperbolehkan.";
         }
 
-        // Jika semua cek lolos
+        // Proses upload jika validasi lolos
         if ($uploadOk == 1) {
             // Hapus logo lama jika ada dan file-nya ada di server
             if ($logo_lama && file_exists($target_dir . $logo_lama)) {
-                unlink($target_dir . $logo_lama);
+                if (!unlink($target_dir . $logo_lama)) {
+                    error_log("Warning: Gagal menghapus logo lama: " . $target_dir . $logo_lama);
+                }
             }
 
-            // Generate nama unik untuk mencegah konflik dan karakter khusus
+            // Generate nama unik untuk file baru
             $logo_nama = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $gambar_nama_asli_baru);
             $target_file_baru = $target_dir . $logo_nama;
 
+            // Upload file baru
             if (!move_uploaded_file($_FILES["logo"]["tmp_name"], $target_file_baru)) {
+                error_log("Upload Error: Gagal memindahkan file baru ke " . $target_file_baru);
                 $error_message = "Terjadi kesalahan saat mengupload logo baru.";
-                $uploadOk = 0;
-                $logo_nama = $logo_lama; // Kembali ke logo lama jika upload baru gagal
+                $logo_nama = $logo_lama; // Kembali ke logo lama jika upload gagal
             }
         } else {
-            if (!isset($error_message)) $error_message = "Upload logo baru gagal.";
+            // Log error jika validasi gagal
+            error_log("Upload Error: " . $error_message);
             $logo_nama = $logo_lama; // Kembali ke logo lama jika validasi gagal
         }
     }
 
-    $stmt = $koneksi->prepare("UPDATE ormawa SET nama_ormawa = ?, deskripsi = ?, logo = ? WHERE id = ?");
+    // ========================================
+    // UPDATE DATA KE DATABASE
+    // ========================================
+    $stmt = $koneksi->prepare("UPDATE ormawa SET nama_ormawa = ?, deskripsi = ?, kategori = ?, visi = ?, misi = ?, email = ?, contact_person = ?, logo = ?, update_at = NOW() WHERE id = ?");
+    
     if ($stmt) {
-        $stmt->bind_param("sssi", $nama, $deskripsi, $logo_nama, $id);
-        $stmt->execute();
-        $stmt->close();
-
-        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&success=form");
-        exit;
+        $stmt->bind_param("ssssssssi", $nama, $deskripsi, $kategori, $visi, $misi, $email, $contact_person, $logo_nama, $id);
+        
+        if ($stmt->execute()) {
+            $stmt->close();
+            // PERUBAHAN: Menggunakan success=updated untuk pesan spesifik
+            header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&success=updated"); 
+            exit;
+        } else {
+            error_log("Database Error (Update): " . $stmt->error);
+            $stmt->close();
+            header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
+            exit;
+        }
     } else {
-        error_log("Error updating ormawa: " . $koneksi->error);
+        error_log("Database Error (Prepare Update): " . $koneksi->error);
         header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
         exit;
     }
 }
 
-// --- FUNGSI: Menghapus Ormawa ---
+// ========================================
+// FUNGSI: HAPUS ORMAWA (DELETE)
+// ========================================
 if (isset($_GET['action']) && $_GET['action'] === 'delete') {
+    
     $id = (int)($_GET['id'] ?? 0);
-    if ($id > 0) {
-        // Ambil nama logo untuk dihapus
-        $stmt = $koneksi->prepare("SELECT logo FROM ormawa WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $logo_nama = $row['logo'] ?? '';
-        $stmt->close();
+    
+    // Validasi ID
+    if ($id <= 0) {
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=invalid_id");
+        exit;
+    }
 
-        // Hapus dari tabel `ormawa`
-        $stmt = $koneksi->prepare("DELETE FROM ormawa WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
+    // ========================================
+    // AMBIL DATA UNTUK MENDAPATKAN NAMA LOGO
+    // ========================================
+    $stmt = $koneksi->prepare("SELECT logo FROM ormawa WHERE id = ?");
+    
+    if (!$stmt) {
+        error_log("Database Error (Prepare Select for Delete): " . $koneksi->error);
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
+        exit;
+    }
+    
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows == 0) {
         $stmt->close();
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=data_not_found");
+        exit;
+    }
+    
+    $row = $result->fetch_assoc();
+    $logo_nama = $row['logo'] ?? '';
+    $stmt->close();
 
-        // Hapus file logo dari server jika ada
-        if ($logo_nama && file_exists("../uploads/logos/" . $logo_nama)) { // Path relatif dari App/Function/
-            unlink("../uploads/logos/" . $logo_nama);
+    // ========================================
+    // HAPUS DATA DARI DATABASE
+    // ========================================
+    $stmt = $koneksi->prepare("DELETE FROM ormawa WHERE id = ?");
+    
+    if (!$stmt) {
+        error_log("Database Error (Prepare Delete): " . $koneksi->error);
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
+        exit;
+    }
+    
+    $stmt->bind_param("i", $id);
+    
+    if ($stmt->execute()) {
+        $stmt->close();
+        
+        // ========================================
+        // HAPUS FILE LOGO DARI SERVER
+        // ========================================
+        if ($logo_nama && file_exists("../uploads/logos/" . $logo_nama)) {
+            if (!unlink("../uploads/logos/" . $logo_nama)) {
+                error_log("Warning: Gagal menghapus file logo: ../uploads/logos/" . $logo_nama);
+            }
         }
 
-        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&deleted=ormawa"); // Ganti 'form' menjadi 'ormawa' agar lebih spesifik
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&deleted=ormawa");
         exit;
     } else {
-        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=invalid_id");
+        error_log("Database Error (Execute Delete): " . $stmt->error);
+        $stmt->close();
+        header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=query_gagal");
         exit;
     }
 }
 
-// Tangani error jika tidak ada aksi yang dikenali
-header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=unknown_action");
+// ========================================
+// HANDLE: ACTION TIDAK DIKENALI
+// ========================================
+if (isset($_POST['action']) || isset($_GET['action'])) {
+    header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa&error=unknown_action");
+    exit;
+}
+
+// Redirect default jika file diakses langsung tanpa parameter
+header("Location: ../App/View/SuperAdmin/Index.php?page=ormawa");
 exit;
-
-
 ?>

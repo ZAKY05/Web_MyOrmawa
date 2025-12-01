@@ -1,150 +1,177 @@
 <?php
-// Matikan output error ke layar agar tidak merusak JSON
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
-
-// Buffer output untuk menangkap echo yang tidak disengaja
 ob_start();
-
 header('Content-Type: application/json; charset=utf-8');
 
-// Mulai session jika belum ada
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+function jsonResponse($success, $message, $data = []) {
+    echo json_encode(array_merge([
+        'success' => $success,
+        'message' => $message
+    ], $data));
+    exit;
+}
+
+// Helper: validasi koordinat
+function validateLatLng($lat, $lng) {
+    $lat = floatval($lat);
+    $lng = floatval($lng);
+    return ($lat >= -90 && $lat <= 90) && ($lng >= -180 && $lng <= 180);
+}
+
 try {
-    // 1. Definisi Path Koneksi
     $config_path = __DIR__ . '/../Config/ConnectDB.php';
-
     if (!file_exists($config_path)) {
-        throw new Exception("File koneksi tidak ditemukan di: $config_path");
+        throw new Exception("File koneksi tidak ditemukan.");
     }
-
     $koneksi = include($config_path);
+    if (!$koneksi) throw new Exception("Koneksi database gagal.");
 
-    // Validasi koneksi
-    if (!$koneksi || !($koneksi instanceof mysqli)) {
-        global $conn;
-        if ($conn && $conn instanceof mysqli) {
-            $koneksi = $conn;
-        } else {
-            throw new Exception("Gagal koneksi database.");
-        }
-    }
-
-    // 2. Cek Login
     $user_id = $_SESSION['user_id'] ?? null;
     $user_level = $_SESSION['user_level'] ?? 0;
     $ormawa_id = $_SESSION['ormawa_id'] ?? 0;
 
-    // Asumsi level 2 adalah admin ormawa
-    if (!$user_id || $user_level != 2) { 
-        throw new Exception("Akses ditolak. Login admin diperlukan.");
+    if (!$user_id || $user_level != 2) {
+        throw new Exception("Akses ditolak. Hanya admin ORMawa yang dapat membuat sesi.");
     }
 
-    // 3. Ambil Action
     $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    // --- HANDLER: PING ---
+    // --- PING ---
     if ($action === 'ping') {
-        echo json_encode(['success' => true, 'message' => 'Server Ready']);
-        exit;
+        jsonResponse(true, 'OK');
     }
 
-    // --- HANDLER: BUAT SESI ---
+    // --- GET BANK LOKASI ---
+    if ($action === 'get_bank') {
+        $stmt = mysqli_prepare($koneksi, "SELECT id, nama_lokasi, lat, lng, radius_default FROM lokasi_absen WHERE ormawa_id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $ormawa_id);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        
+        $locations = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $locations[] = $row;
+        }
+        mysqli_stmt_close($stmt);
+        
+        jsonResponse(true, 'OK', ['locations' => $locations]);
+    }
+
+    // --- BUAT SESI ---
     if ($action === 'buat') {
-        $judul = $_POST['judul_rapat'] ?? '';
-        $tgl_mulai = $_POST['tanggal_mulai'] ?? '';
-        $jam_mulai = $_POST['jam_mulai'] ?? '';
-        $tgl_selesai = $_POST['tanggal_selesai'] ?? '';
-        $jam_selesai = $_POST['jam_selesai'] ?? '';
+        $judul = trim($_POST['judul_rapat'] ?? '');
+        $mulai = $_POST['waktu_mulai'] ?? '';
+        $selesai = $_POST['waktu_selesai'] ?? '';
 
-        if (empty($judul) || empty($tgl_mulai)) {
-            throw new Exception("Judul dan Tanggal wajib diisi.");
+        if (empty($judul)) throw new Exception("Judul wajib diisi.");
+        if (empty($mulai) || empty($selesai)) throw new Exception("Waktu mulai & selesai wajib diisi.");
+
+        $dt_mulai = DateTime::createFromFormat('Y-m-d\TH:i', $mulai);
+        $dt_selesai = DateTime::createFromFormat('Y-m-d\TH:i', $selesai);
+        if (!$dt_mulai || !$dt_selesai) {
+            throw new Exception("Format waktu tidak valid. Format: YYYY-MM-DDTHH:MM");
+        }
+        if ($dt_mulai >= $dt_selesai) {
+            throw new Exception("Waktu selesai harus lebih besar dari waktu mulai.");
         }
 
-        $waktu_mulai = "$tgl_mulai $jam_mulai:00";
-        $waktu_selesai = "$tgl_selesai $jam_selesai:00";
-        
-        // Generate Kode Unik
-        $kode_unik = strtoupper(substr(md5(time() . uniqid()), 0, 6));
-        
-        // Data Lokasi (Sesuai kolom Database kamu: lokasi_nama, lat, lng, radius)
-        // Jika user tidak mencentang lokasi, kita set NULL
-        $use_loc = isset($_POST['use_location']); // Boolean
-        
-        $loc_name = $use_loc ? ($_POST['lokasi_nama'] ?? '') : null;
-        $lat      = $use_loc ? ($_POST['lat'] ?? null) : null;
-        $lng      = $use_loc ? ($_POST['lng'] ?? null) : null;
-        $radius   = $use_loc ? ($_POST['radius'] ?? 100) : null; // Default 100 meter jika null
+        $waktu_mulai = $dt_mulai->format('Y-m-d H:i:00');
+        $waktu_selesai = $dt_selesai->format('Y-m-d H:i:00');
 
-        // Query INSERT disesuaikan dengan kolom database kamu
-        $query = "INSERT INTO kehadiran 
-                  (ormawa_id, judul_rapat, waktu_mulai, waktu_selesai, kode_unik, status, lokasi_nama, lat, lng, radius) 
-                  VALUES (?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?)";
-        
-        $stmt = mysqli_prepare($koneksi, $query);
-        if (!$stmt) throw new Exception("Query Error: " . mysqli_error($koneksi));
-        
-        // Tipe data bind: i=int, s=string, d=double
-        // urutan: ormawa_id(i), judul(s), mulai(s), selesai(s), kode(s), lokasi_nama(s), lat(d), lng(d), radius(i)
-        mysqli_stmt_bind_param($stmt, "isssssddi", $ormawa_id, $judul, $waktu_mulai, $waktu_selesai, $kode_unik, $loc_name, $lat, $lng, $radius);
-        
+        $kode_unik = strtoupper(substr(md5(uniqid() . time()), 0, 6));
+
+        $id_lokasi_absen = null;
+        if (isset($_POST['use_location']) && !empty($_POST['id_lokasi_absen'])) {
+            $id_lokasi_absen = (int)$_POST['id_lokasi_absen'];
+
+            // Validasi lokasi milik ORMawa
+            $stmt = mysqli_prepare($koneksi, "SELECT id FROM lokasi_absen WHERE id = ? AND ormawa_id = ?");
+            mysqli_stmt_bind_param($stmt, "ii", $id_lokasi_absen, $ormawa_id);
+            mysqli_stmt_execute($stmt);
+            $lokasi_valid = mysqli_stmt_get_result($stmt)->fetch_assoc();
+            mysqli_stmt_close($stmt);
+
+            if (!$lokasi_valid) {
+                throw new Exception("Lokasi tidak ditemukan atau bukan milik ORMawa Anda.");
+            }
+        }
+
+        // ✅ Query sesuai struktur tabel: hanya 7 kolom
+        $stmt = mysqli_prepare($koneksi,
+            "INSERT INTO kehadiran 
+             (ormawa_id, judul_rapat, waktu_mulai, waktu_selesai, kode_unik, status, id_lokasi_absen) 
+             VALUES (?, ?, ?, ?, ?, 'aktif', ?)"
+        );
+
+        if (!$stmt) throw new Exception("Query gagal: " . mysqli_error($koneksi));
+
+        mysqli_stmt_bind_param(
+            $stmt,
+            "issssi",    // i = ormawa_id, s = judul, s = mulai, s = selesai, s = kode_unik, i = id_lokasi_absen
+            $ormawa_id,
+            $judul,
+            $waktu_mulai,
+            $waktu_selesai,
+            $kode_unik,
+            $id_lokasi_absen  // NULL jika tidak dipilih
+        );
+
         if (mysqli_stmt_execute($stmt)) {
-            echo json_encode(['success' => true, 'message' => 'Sesi Absensi Berhasil Dibuat!']);
+            jsonResponse(true, 'Sesi absensi berhasil dibuat!');
         } else {
-            throw new Exception("Gagal menyimpan: " . mysqli_stmt_error($stmt));
+            throw new Exception("Gagal menyimpan sesi: " . mysqli_stmt_error($stmt));
         }
-        exit;
     }
 
-    // --- HANDLER: SELESAI SESI ---
+    // --- SELESAI SESI ---
     if ($action === 'selesai') {
-        $id = $_GET['id'] ?? 0;
-        $stmt = mysqli_prepare($koneksi, "UPDATE kehadiran SET status='selesai' WHERE id=? AND ormawa_id=?");
+        $id = (int)($_GET['id'] ?? 0);
+        if ($id <= 0) throw new Exception("ID tidak valid.");
+
+        $stmt = mysqli_prepare($koneksi, "UPDATE kehadiran SET status = 'selesai' WHERE id = ? AND ormawa_id = ?");
         mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
         
-        if (mysqli_stmt_execute($stmt)) {
-            echo json_encode(['success' => true, 'message' => 'Sesi telah diakhiri.']);
+        if (mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) > 0) {
+            jsonResponse(true, 'Sesi berhasil diakhiri.');
         } else {
-            throw new Exception("Gagal update database.");
+            throw new Exception("Sesi tidak ditemukan atau bukan milik Anda.");
         }
-        exit;
     }
 
-    // --- HANDLER: GET PESERTA ---
+    // --- GET PESERTA ---
     if ($action === 'get_peserta') {
-        $id = $_GET['kehadiran_id'] ?? 0;
-        // Pastikan tabel absensi_log ada dan relasinya benar
+        $id = (int)($_GET['kehadiran_id'] ?? 0);
+        if ($id <= 0) throw new Exception("ID sesi tidak valid.");
+
         $query = "SELECT a.nama, al.waktu_absen, al.tipe_absen 
-                  FROM absensi_log al 
-                  JOIN anggota a ON al.anggota_id = a.id 
-                  WHERE al.kehadiran_id = ? ORDER BY al.waktu_absen DESC";
+                  FROM absensi_log al
+                  JOIN anggota a ON al.anggota_id = a.id
+                  WHERE al.kehadiran_id = ?
+                  ORDER BY al.waktu_absen DESC";
         
         $stmt = mysqli_prepare($koneksi, $query);
         mysqli_stmt_bind_param($stmt, "i", $id);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
         
-        $data = [];
+        $peserta = [];
         while ($row = mysqli_fetch_assoc($res)) {
-            $data[] = $row;
+            $peserta[] = $row;
         }
         
-        echo json_encode(['success' => true, 'peserta' => $data]);
-        exit;
+        jsonResponse(true, 'OK', ['peserta' => $peserta]);
     }
 
-    throw new Exception("Action tidak dikenali.");
-
+    throw new Exception("Aksi tidak dikenali.");
+    
 } catch (Throwable $e) {
-    ob_end_clean(); 
-    http_response_code(200); 
-    echo json_encode([
-        'success' => false,
-        'message' => 'Server Error: ' . $e->getMessage()
-    ]);
-    exit;
+    ob_end_clean();
+    http_response_code(200);
+    jsonResponse(false, $e->getMessage());
 }
 ?>
