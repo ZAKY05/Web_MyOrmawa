@@ -45,9 +45,8 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
         SELECT 
             s.id as submission_id,
             s.user_id, 
-            u.nama as user_nama, 
+            u.full_name as user_nama, 
             u.nim, 
-            u.username, 
             u.email, 
             s.form_id, 
             s.field_name, 
@@ -96,7 +95,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
             $unique_users[$user_id] = [
                 'nama'      => $sub['user_nama'],
                 'nim'       => $sub['nim'],
-                'username'  => $sub['username'],
                 'email'     => $sub['email']
             ];
             $organized_submissions[$user_id] = [];
@@ -135,6 +133,12 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                 <a href="?page=oprec&form_id=<?= $form_info_id ?>" class="btn btn-info btn-sm mr-2" title="Kembali ke Edit Form">
                     <i class="fas fa-edit"></i> Edit Form
                 </a>
+                <!-- Tombol Ekspor -->
+                <a href="../../../Function/ExportSubmissionsFunction.php?action=export_submissions_xlsx&form_info_id=<?= $form_info_id ?>" 
+                   class="btn btn-success btn-sm mr-2" 
+                   title="Ekspor semua submission ke Excel">
+                    <i class="fas fa-file-excel"></i> Ekspor Excel
+                </a>
                 <!-- Filter Status -->
                 <div class="btn-group btn-group-sm" role="group">
                     <a href="<?= buildFilterUrl('all') ?>" 
@@ -172,7 +176,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                 <th width="5%">No</th>
                                 <th width="20%">Pengguna</th>
                                 <th width="15%">NIM</th>
-                                <th width="15%">Username</th>
                                 <th width="20%">Email</th>
                                 <th width="10%" class="text-center">Status</th>
                                 <th width="10%" class="text-center">Jawaban</th>
@@ -196,7 +199,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                     <td class="text-center"><?= $no++ ?></td>
                                     <td><i class="fas fa-user-circle text-primary"></i> <?= htmlspecialchars($user_info['nama']) ?></td>
                                     <td><?= htmlspecialchars($user_info['nim']) ?></td>
-                                    <td><?= htmlspecialchars($user_info['username']) ?></td>
                                     <td><?= htmlspecialchars($user_info['email']) ?></td>
                                     <td class="text-center">
                                         <?php if ($current_status === 'approved'): ?>
@@ -353,7 +355,7 @@ function displaySubmissionsForForm($koneksi, $form_info_id) {
                                             <div class="row">
                                                 <div class="col-md-3"><strong>Nama:</strong> <?= htmlspecialchars($user_info['nama']) ?></div>
                                                 <div class="col-md-3"><strong>NIM:</strong> <?= htmlspecialchars($user_info['nim']) ?></div>
-                                                <div class="col-md-3"><strong>Username:</strong> <?= htmlspecialchars($user_info['username']) ?></div>
+
                                                 <div class="col-md-3"><strong>Email:</strong> <?= htmlspecialchars($user_info['email']) ?></div>
                                             </div>
                                             <div class="row mt-2">
