@@ -5,7 +5,7 @@ $active_form_id = isset($_GET['form_id']) ? (int)$_GET['form_id'] : 0;
 $show_create_form = isset($_GET['create']) && $_GET['create'] == '1';
 $view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_submissions'] : 0;
 
-include '../SuperAdmin/ViewSubmissions.php';
+include '../Admin/ViewSubmissions.php';
 
 $query = "
     SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, fi.user_id, u.full_name as pembuat_nama
@@ -79,7 +79,7 @@ if ($active_form_id > 0) {
     $submissionCount = $submissionCountRow['total'] ?? 0;
 }
 
-include('../SuperAdmin/Header.php');
+include('../Admin/Header.php');
 ?>
 
 <div class="container-fluid">
@@ -243,8 +243,8 @@ include('../SuperAdmin/Header.php');
                                             <a href="?page=oprec&view_submissions=<?= $form['id'] ?>" class="btn btn-warning btn-sm btn-circle" title="Lihat Submissions">
                                                 <i class="fas fa-users"></i>
                                             </a>
-                                            <button class="btn btn-danger btn-sm btn-circle" title="Hapus" 
-                                                    data-toggle="modal" 
+                                            <button class="btn btn-danger btn-sm btn-circle" title="Hapus"
+                                                    data-toggle="modal"
                                                     data-target="#deleteFormModal<?= $form['id'] ?>">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -264,7 +264,7 @@ include('../SuperAdmin/Header.php');
                                                 </button>
                                             </div>
                                             <div class="modal-body">
-                                                Apakah Anda yakin ingin menghapus formulir <strong>"<?= htmlspecialchars($form['judul']) ?>"</strong>? 
+                                                Apakah Anda yakin ingin menghapus formulir <strong>"<?= htmlspecialchars($form['judul']) ?>"</strong>?
                                                 <br><br>
                                                 <span class="text-danger">Semua field dan data yang terkait akan ikut terhapus!</span>
                                             </div>
@@ -346,7 +346,7 @@ include('../SuperAdmin/Header.php');
         <div class="col-xl-8 col-lg-7">
             <?php if ($view_submissions_form_id > 0): ?>
                 <!-- Tampilkan komponen submissions -->
-                <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id); ?>
+                <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id, $_SESSION['user_id']); ?>
             <?php elseif ($active_form_id > 0 && $form_detail): ?>
                 <div class="row">
                     <!-- Tambah Field -->
@@ -418,7 +418,7 @@ include('../SuperAdmin/Header.php');
                                         <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <h5 class="font-weight-bold text-gray-900"><?= htmlspecialchars($form_detail['judul']) ?></h5>
                                 <p class="text-muted small mb-3"><?= htmlspecialchars($form_detail['deskripsi']) ?></p>
                                 <hr>
@@ -516,8 +516,8 @@ include('../SuperAdmin/Header.php');
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-danger btn-sm btn-circle" 
-                                                            data-toggle="modal" 
+                                                    <button type="button" class="btn btn-danger btn-sm btn-circle"
+                                                            data-toggle="modal"
                                                             data-target="#deleteFieldModal<?= $field['id'] ?>"
                                                             title="Hapus Field">
                                                         <i class="fas fa-trash"></i>
@@ -647,4 +647,4 @@ include('../SuperAdmin/Header.php');
     });
 </script>
 
-<?php include('../SuperAdmin/Footer.php'); ?>
+<?php include('../Admin/Footer.php'); ?>
