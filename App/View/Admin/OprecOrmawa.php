@@ -369,7 +369,6 @@ include('../SuperAdmin/Header.php');
                                         <label class="small font-weight-bold">Tipe Field <span class="text-danger">*</span></label>
                                         <select name="type" id="type" class="form-control" onchange="toggleOptions()">
                                             <option value="text">Input Text</option>
-                                            <option value="email">Email</option>
                                             <option value="number">Number</option>
                                             <option value="textarea">Text Area</option>
                                             <option value="file">File Upload</option>
