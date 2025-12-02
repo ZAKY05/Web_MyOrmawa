@@ -83,7 +83,7 @@ if (isset($_POST['login'])) {
 // Logout
 if (isset($_GET['logout'])) {
     session_destroy();
-    header("Location: /MyOrmawa/App/View/SuperAdmin/Login.php");
+    header("Location: ../App/View/SuperAdmin/Login.php");
     exit();
 }
 ?>
