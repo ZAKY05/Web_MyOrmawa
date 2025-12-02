@@ -416,7 +416,7 @@ include('../SuperAdmin/Header.php');
                             <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                                 <?php if ($form_detail['gambar']): ?>
                                     <div class="text-center mb-3">
-                                        <img src="../../../uploads/form<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
+                                        <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-fluid rounded" style="max-height: 150px;">
                                     </div>
                                 <?php endif; ?>
                                 
