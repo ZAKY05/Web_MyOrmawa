@@ -310,6 +310,7 @@ include('../SuperAdmin/Header.php');
                                     <div class="mb-2">
                                         <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
                                     </div>
+                                    
                                 <?php endif; ?>
                                 <input type="file" name="gambar" class="form-control-file" accept="image/*">
                                 <?php if ($form_detail && $form_detail['gambar']): ?>
