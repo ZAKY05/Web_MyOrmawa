@@ -7,8 +7,9 @@ $routes = [
     'oprec'=>'../SuperAdmin/OprecOrmawa.php',
     'oprec-event'=>'../SuperAdmin/OprecEvent.php',
     'doc'=>'../SuperAdmin/Document.php',
-    'ormawa'=>'../SuperAdmin/Ormawa.php',
+    'ormawa'=>'Ormawa.php',
     'account'=>'../SuperAdmin/Account.php',
-    'kompetisi'=>'../SuperAdmin/Kompetisi.php'
+    'kompetisi'=>'Kompetisi.php',
+    'beasiswa'=>'Beasiswa.php',
 ];
 ?>

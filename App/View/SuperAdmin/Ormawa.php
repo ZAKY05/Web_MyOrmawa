@@ -2,65 +2,81 @@
 include('Header.php');
 include('../../../Config/ConnectDB.php');
 
-/**
- * Fungsi untuk mengambil semua data ormawa dari database.
- * Diurutkan berdasarkan kategori custom dan nama ormawa.
- */
 function getOrmawaData($koneksi) {
-    // Definisi urutan kategori custom
     $category_order = "'Lembaga', 'Akademik', 'Rohani', 'Minat', 'Olahraga', 'Seni'";
-    
     $sql = "SELECT id, nama_ormawa, deskripsi, kategori, visi, misi, email, contact_person, logo, created_at, update_at 
             FROM ormawa 
             ORDER BY FIELD(kategori, $category_order) ASC, nama_ormawa ASC";
-            
     $result = mysqli_query($koneksi, $sql);
     $data = [];
-    
     if ($result) {
         while($row = mysqli_fetch_assoc($result)) {
             $data[] = $row;
         }
         mysqli_free_result($result);
-    } else {
-        echo "<div class='alert alert-danger'>Error mengambil data: " . mysqli_error($koneksi) . "</div>";
     }
-    
     return $data;
 }
 
 $ormawa_list = getOrmawaData($koneksi);
 ?>
 
-<!-- Menambahkan CSS KUSTOM di sini untuk mengontrol pemotongan teks pada sel tabel -->
 <style>
-    /* Mengontrol pemotongan teks dan tampilan elipsis pada kolom sempit */
     .table-cell-fixed {
-        white-space: nowrap; /* Mencegah pemotongan baris */
-        overflow: hidden;    /* Menyembunyikan teks yang melebihi batas */
-        text-overflow: ellipsis; /* Menampilkan titik-titik (...) */
-        max-width: 1px; /* Penting untuk memaksa overflow bekerja di kolom persentase */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 1px;
     }
-    
-    /* Memastikan tombol aksi selalu terlihat di tengah dan tidak melebar */
     .action-cell {
-        min-width: 80px; /* Lebar minimum untuk 3 tombol */
+        min-width: 80px;
         text-align: center;
+    }
+    /* Search box custom */
+    .search-box {
+        max-width: 400px;
+        margin-bottom: 1rem;
+    }
+    .search-box input {
+        padding-left: 2.5rem;
+    }
+    .search-box i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+    }
+    .search-box .input-group {
+        position: relative;
     }
 </style>
 
 <div class="container-fluid">
-
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
             <i class="fas fa-users"></i> Data Organisasi Mahasiswa (Ormawa)
         </h1>
         <button class="btn btn-success btn-icon-split" data-bs-toggle="modal" data-bs-target="#modalForm" onclick="resetForm()">
-            <span class="icon text-white-50">
-                <i class="fas fa-plus"></i>
-            </span>
+            <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
             <span class="text">Tambah Ormawa</span>
         </button>
+    </div>
+
+    <!-- ✅ SEARCH BOX MANUAL -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="search-box">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control border-start-0" 
+                           placeholder="Cari: Nama, Kategori, Email, Contact Person..." 
+                           onkeyup="filterTable()">
+                </div>
+            </div>
+        </div>
     </div>
 
     <?php if (isset($_GET['success']) && $_GET['success'] == 'form'): ?>
@@ -69,7 +85,6 @@ $ormawa_list = getOrmawaData($koneksi);
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php elseif (isset($_GET['success']) && $_GET['success'] == 'updated'): ?>
-        <!-- KONDISI BARU UNTUK SUCCESS UPDATE -->
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="fas fa-check-circle"></i> Data berhasil diperbarui!
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -105,12 +120,10 @@ $ormawa_list = getOrmawaData($koneksi);
             </h6>
         </div>
         <div class="card-body">
-            <!-- PENTING: Mengembalikan div class="table-responsive" agar tata letak tidak rusak parah dan scroll bar muncul jika tabel benar-benar lebar -->
-            <div class="table-responsive"> 
-                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="ormawaTable" width="100%" cellspacing="0">
                     <thead class="table-light">
                         <tr>
-                            <!-- Menggunakan alokasi lebar terakhir yang sudah optimal -->
                             <th width="2%">No</th>
                             <th width="3%">Logo</th>
                             <th width="9%">Nama Ormawa</th>
@@ -123,12 +136,11 @@ $ormawa_list = getOrmawaData($koneksi);
                             <th width="2%">Aksi</th>        
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="tableBody">
                         <?php
                         if (count($ormawa_list) > 0) {
                             $no = 1;
                             foreach ($ormawa_list as $ormawa) {
-                                // Badge color berdasarkan kategori
                                 $badgeClass = 'bg-dark';
                                 switch($ormawa['kategori']) {
                                     case 'Akademik': $badgeClass = 'bg-primary'; break;
@@ -139,10 +151,18 @@ $ormawa_list = getOrmawaData($koneksi);
                                     case 'Olahraga': $badgeClass = 'bg-secondary'; break;
                                 }
                                 
-                                echo "<tr>";
+                                // ✅ Simpan data ke atribut `data-search` untuk pencarian
+                                $searchText = strtolower(
+                                    $ormawa['nama_ormawa'] . ' ' .
+                                    $ormawa['kategori'] . ' ' .
+                                    $ormawa['email'] . ' ' .
+                                    $ormawa['contact_person'] . ' ' .
+                                    $ormawa['deskripsi']
+                                );
+                                
+                                echo "<tr data-search=\"" . htmlspecialchars($searchText, ENT_QUOTES) . "\">";
                                 echo "<td class='text-center'>" . $no++ . "</td>";
                                 
-                                // Kolom Logo
                                 echo "<td class='text-center'>";
                                 if (!empty($ormawa['logo'])) {
                                     echo '<img src="../../../uploads/logos/' . htmlspecialchars($ormawa['logo']) . '" 
@@ -154,33 +174,25 @@ $ormawa_list = getOrmawaData($koneksi);
                                 }
                                 echo "</td>";
                                 
-                                // Kolom Data
                                 echo "<td><strong>" . htmlspecialchars($ormawa['nama_ormawa']) . "</strong></td>";
                                 echo "<td><span class='badge " . $badgeClass . "'>" . htmlspecialchars($ormawa['kategori']) . "</span></td>";
                                 
-                                // Deskripsi (dipotong 150 karakter)
                                 $deskripsi = !empty($ormawa['deskripsi']) ? htmlspecialchars($ormawa['deskripsi']) : '-';
                                 echo "<td>" . (strlen($deskripsi) > 150 ? substr($deskripsi, 0, 150) . "..." : $deskripsi) . "</td>";
                                 
-                                // Visi (dipotong lebih banyak baris karena kolom lebih lebar -> 200 karakter)
                                 $visi = !empty($ormawa['visi']) ? htmlspecialchars($ormawa['visi']) : '-';
                                 echo "<td>" . (strlen($visi) > 200 ? substr($visi, 0, 200) . "..." : $visi) . "</td>";
                                 
-                                // Misi (dipotong lebih banyak baris karena kolom lebih lebar -> 200 karakter)
                                 $misi = !empty($ormawa['misi']) ? htmlspecialchars($ormawa['misi']) : '-';
                                 echo "<td>" . (strlen($misi) > 200 ? substr($misi, 0, 200) . "..." : $misi) . "</td>";
                                 
-                                // Email (Menggunakan class CSS kustom untuk memaksa pemotongan teks)
                                 echo "<td class='table-cell-fixed'>" . (!empty($ormawa['email']) ? '<a href="mailto:' . htmlspecialchars($ormawa['email']) . '">' . 
                                             htmlspecialchars($ormawa['email']) . '</a>' : '-') . "</td>";
                                 
-                                // Contact Person (Menggunakan class CSS kustom untuk memaksa pemotongan teks)
                                 echo "<td class='table-cell-fixed'>" . (!empty($ormawa['contact_person']) ? htmlspecialchars($ormawa['contact_person']) : '-') . "</td>";
                                 
-                                // Kolom Aksi (Action)
                                 echo "<td class='action-cell'>";
                                 
-                                // Tombol Detail
                                 echo "<button class='btn btn-info btn-circle btn-sm me-1 mb-1' 
                                             data-bs-toggle='modal' data-bs-target='#modalDetail' 
                                             onclick='viewDetail(" . $ormawa['id'] . ")' 
@@ -188,7 +200,6 @@ $ormawa_list = getOrmawaData($koneksi);
                                             <i class='fas fa-eye'></i>
                                             </button> ";
                                 
-                                // Tombol Edit (Memuat semua data ke data-attribute)
                                 echo "<button class='btn btn-warning btn-circle btn-sm me-1 mb-1' 
                                             data-bs-toggle='modal' 
                                             data-bs-target='#modalForm' 
@@ -206,7 +217,6 @@ $ormawa_list = getOrmawaData($koneksi);
                                             <i class='fas fa-edit'></i>
                                             </button> ";
                                 
-                                // Tombol Delete
                                 echo "<a href='../../../Function/OrmawaFunction.php?action=delete&id=" . $ormawa['id'] . "' 
                                             class='btn btn-danger btn-circle btn-sm mb-1' 
                                             onclick='return confirm(\"Yakin ingin menghapus data " . htmlspecialchars($ormawa['nama_ormawa']) . "?\")' 
@@ -223,11 +233,16 @@ $ormawa_list = getOrmawaData($koneksi);
                         ?>
                     </tbody>
                 </table>
-            </div> <!-- Penutup div.table-responsive yang dikembalikan -->
+                <div id="noResults" class="text-center text-muted mt-3 d-none">
+                    <i class="fas fa-magnifying-glass fa-2x mb-2"></i>
+                    <p>Tidak ada data yang sesuai dengan pencarian Anda.</p>
+                </div>
+            </div>
         </div>
     </div>
-
 </div>
+
+<!-- Modal & Script -->
 <div class="modal fade" id="modalDetail" tabindex="-1" aria-labelledby="modalDetailLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -252,18 +267,39 @@ $ormawa_list = getOrmawaData($koneksi);
 </div>
 
 <script>
-/**
- * Fungsi untuk view detail ormawa.
- */
+// ✅ FUNGSI SEARCH MANUAL (pure JavaScript)
+function filterTable() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase().trim();
+    const table = document.getElementById('ormawaTable');
+    const rows = table.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const searchText = row.getAttribute('data-search') || '';
+        if (filter === '' || searchText.includes(filter)) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Tampilkan/menyembunyikan pesan "tidak ada hasil"
+    const noResults = document.getElementById('noResults');
+    if (filter !== '' && visibleCount === 0) {
+        noResults.classList.remove('d-none');
+    } else {
+        noResults.classList.add('d-none');
+    }
+}
+
+// Fungsi lainnya (viewDetail, edit, dll) tetap sama seperti sebelumnya
 function viewDetail(id) {
     const ormawaData = <?php echo json_encode($ormawa_list); ?>;
-    
-    const ormawa = ormawaData.find(item => item.id == id);
-    
+    const ormawa = ormawaData.find(item => parseInt(item.id) === id);
     if (ormawa) {
         let html = '<div class="row">';
-        
-        // Logo
         html += '<div class="col-md-3 text-center mb-3">';
         if (ormawa.logo) {
             html += '<img src="../../../uploads/logos/' + ormawa.logo + '" alt="Logo" class="img-thumbnail" style="max-width: 150px;">';
@@ -271,30 +307,20 @@ function viewDetail(id) {
             html += '<div class="bg-light border rounded d-flex align-items-center justify-content-center" style="width: 150px; height: 150px;"><i class="fas fa-image fa-3x text-muted"></i></div>';
         }
         html += '</div>';
-        
-        // Info Detail
         html += '<div class="col-md-9">';
         html += '<h4>' + ormawa.nama_ormawa + '</h4>';
         html += '<p><span class="badge bg-primary">' + ormawa.kategori + '</span></p>';
         html += '<hr>';
-        
         html += '<p><strong><i class="fas fa-align-left"></i> Deskripsi:</strong><br>' + (ormawa.deskripsi || '-') + '</p>';
         html += '<p><strong><i class="fas fa-bullseye"></i> Visi:</strong><br>' + (ormawa.visi || '-') + '</p>';
-        // Misi ditampilkan dengan line break
-        html += '<p><strong><i class="fas fa-tasks"></i> Misi:</strong><br>' + (ormawa.misi ? ormawa.misi.replace(/\n/g, '<br>') : '-') + '</p>'; 
+        html += '<p><strong><i class="fas fa-tasks"></i> Misi:</strong><br>' + (ormawa.misi ? ormawa.misi.replace(/\n/g, '<br>') : '-') + '</p>';
         html += '<p><strong><i class="fas fa-envelope"></i> Email:</strong> ' + (ormawa.email || '-') + '</p>';
         html += '<p><strong><i class="fas fa-phone"></i> Contact Person:</strong> ' + (ormawa.contact_person || '-') + '</p>';
-        
-        html += '</div>';
-        html += '</div>';
-        
+        html += '</div></div>';
         document.getElementById('detailContent').innerHTML = html;
     }
 }
 
-/**
- * Fungsi untuk edit ormawa - memuat data dari data-attribute button ke form.
- */
 function editOrmawaFromButton(button) {
     const id = button.getAttribute('data-id');
     const nama = button.getAttribute('data-nama');
@@ -306,7 +332,6 @@ function editOrmawaFromButton(button) {
     const contact = button.getAttribute('data-contact');
     const logo = button.getAttribute('data-logo');
     
-    // Populate form
     document.getElementById('formAction').value = 'edit';
     document.getElementById('editId').value = id;
     document.getElementById('nama_ormawa').value = nama || '';
@@ -318,7 +343,6 @@ function editOrmawaFromButton(button) {
     document.getElementById('contact_person').value = contact || '';
     document.getElementById('modalFormLabel').textContent = 'Edit Ormawa';
     
-    // Tampilkan preview logo jika ada
     const logoPreview = document.getElementById('logoPreview');
     if (logo) {
         logoPreview.innerHTML = 
@@ -330,44 +354,23 @@ function editOrmawaFromButton(button) {
     }
 }
 
-/**
- * Fungsi untuk reset form (untuk mode Tambah Ormawa).
- */
 function resetForm() {
-    document.getElementById('ormawaForm').reset();
+    document.getElementById('ormawaForm')?.reset();
     document.getElementById('formAction').value = 'add';
     document.getElementById('editId').value = '';
     document.getElementById('modalFormLabel').textContent = 'Tambah Ormawa';
     document.getElementById('logoPreview').innerHTML = '';
 }
 
-/**
- * Fungsi untuk submit form.
- */
-function submitForm() {
-    const form = document.getElementById('ormawaForm');
-    if (form.checkValidity()) {
-        form.submit();
-    } else {
-        form.reportValidity();
-    }
-}
-
-/**
- * Preview logo saat dipilih, termasuk validasi.
- */
-document.getElementById('logo').addEventListener('change', function(e) {
+document.getElementById('logo')?.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
-        // Validasi ukuran file (5MB)
         if (file.size > 5000000) {
             alert('Ukuran file terlalu besar! Maksimal 5MB.');
             this.value = '';
             document.getElementById('logoPreview').innerHTML = '';
             return;
         }
-        
-        // Validasi tipe file
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
         if (!allowedTypes.includes(file.type)) {
             alert('Format file tidak didukung! Gunakan JPG, JPEG, PNG, atau GIF.');
@@ -375,7 +378,6 @@ document.getElementById('logo').addEventListener('change', function(e) {
             document.getElementById('logoPreview').innerHTML = '';
             return;
         }
-        
         const reader = new FileReader();
         reader.onload = function(e) {
             document.getElementById('logoPreview').innerHTML = 

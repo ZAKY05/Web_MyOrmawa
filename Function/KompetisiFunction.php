@@ -2,105 +2,145 @@
 session_start();
 require_once __DIR__ . '/../Config/ConnectDB.php';
 
-// ✅ Validasi login & ORMawa
-if (!isset($_SESSION['user_id']) || empty($_SESSION['ormawa_id'])) {
-    $_SESSION['error'] = "Akses ditolak: Anda tidak memiliki ORMawa.";
+// ✅ Validasi login & tentukan hak akses
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['error'] = "Silakan login terlebih dahulu.";
     header("Location: ../App/View/SuperAdmin/Login.php");
     exit();
 }
 
-$ormawa_id = (int)$_SESSION['ormawa_id'];
+$user_level = (int)($_SESSION['user_level'] ?? 0);
+$ormawa_id_restricted = null;
 
-// === AKSI: TAMBAH / EDIT (via POST) ===
+if ($user_level === 2) {
+    // Admin Organisasi
+    $ormawa_id_restricted = (int)($_SESSION['ormawa_id'] ?? 0);
+    if ($ormawa_id_restricted <= 0) {
+        $_SESSION['error'] = "Anda tidak terdaftar di ORMawa manapun.";
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Kompetisi.php'));
+        exit();
+    }
+} elseif ($user_level !== 1) {
+    $_SESSION['error'] = "Akses ditolak.";
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
+    exit();
+}
+
+$uploadDir = '../../uploads/kompetisi/';
+if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+// Helper redirect
+function redirectBack($fallback = null) {
+    $fallback = $fallback ?? (
+        $_SESSION['user_level'] == 1 
+            ? '../App/View/SuperAdmin/Kompetisi.php' 
+            : '../App/View/Admin/Kompetisi.php'
+    );
+    $ref = $_SERVER['HTTP_REFERER'] ?? $fallback;
+    if (strpos($ref, 'Login.php') !== false || empty($ref)) $ref = $fallback;
+    header("Location: $ref");
+    exit();
+}
+
+// === TAMBAH / EDIT ===
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-
-    // Ambil data
     $nama = trim($_POST['nama_kompetisi'] ?? '');
     $penyelenggara = trim($_POST['penyelenggara'] ?? '');
     $periode = trim($_POST['periode'] ?? '');
     $deadline = trim($_POST['deadline'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
 
-    // Validasi wajib
     if (!$nama || !$penyelenggara || !$deskripsi) {
         $_SESSION['error'] = "Nama, penyelenggara, dan deskripsi wajib diisi.";
-        header("Location: " . $_SERVER['HTTP_REFERER']);
-        exit();
+        redirectBack();
     }
 
-    $uploadDir = '../../uploads/kompetisi/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+    // 🔑 Tentukan id_ormawa target
+    $target_ormawa_id = null;
+    if ($user_level === 1) {
+        $target_ormawa_id = (int)($_POST['id_ormawa'] ?? 0);
+        if ($target_ormawa_id <= 0) {
+            $_SESSION['error'] = "Ormawa wajib dipilih.";
+            redirectBack();
+        }
+        $chk = $koneksi->prepare("SELECT id FROM ormawa WHERE id = ?");
+        $chk->bind_param("i", $target_ormawa_id);
+        $chk->execute();
+        if ($chk->get_result()->num_rows === 0) {
+            $_SESSION['error'] = "Ormawa tidak ditemukan.";
+            redirectBack();
+        }
+        $chk->close();
+    } else {
+        $target_ormawa_id = $ormawa_id_restricted;
+    }
 
     $gambar = '';
     $file_panduan = '';
 
-    // === UPLOAD GAMBAR ===
+    // Upload gambar
     if (!empty($_FILES['gambar']['name'])) {
         $file = $_FILES['gambar'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg', 'jpeg', 'png']) && $file['size'] <= 2 * 1024 * 1024) {
+        if (in_array($ext, ['jpg','jpeg','png']) && $file['size'] <= 2*1024*1024) {
             $gambar = uniqid('img_', true) . '.' . $ext;
             if (!move_uploaded_file($file['tmp_name'], $uploadDir . $gambar)) {
-                $_SESSION['error'] = "Gagal mengunggah gambar.";
-                header("Location: " . $_SERVER['HTTP_REFERER']);
-                exit();
+                $_SESSION['error'] = "Gagal upload gambar.";
+                redirectBack();
             }
         } else {
             $_SESSION['error'] = "Format gambar tidak didukung atau ukuran > 2MB.";
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit();
+            redirectBack();
         }
     }
 
-    // === UPLOAD PANDUAN ===
+    // Upload panduan
     if (!empty($_FILES['file_panduan']['name'])) {
         $file = $_FILES['file_panduan'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['pdf', 'doc', 'docx']) && $file['size'] <= 10 * 1024 * 1024) {
+        if (in_array($ext, ['pdf','doc','docx']) && $file['size'] <= 10*1024*1024) {
             $file_panduan = uniqid('doc_', true) . '.' . $ext;
             if (!move_uploaded_file($file['tmp_name'], $uploadDir . $file_panduan)) {
-                // Hapus gambar jika panduan gagal
                 if ($gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
-                $_SESSION['error'] = "Gagal mengunggah file panduan.";
-                header("Location: " . $_SERVER['HTTP_REFERER']);
-                exit();
+                $_SESSION['error'] = "Gagal upload panduan.";
+                redirectBack();
             }
         } else {
             if ($gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
-            $_SESSION['error'] = "Format file panduan tidak didukung atau ukuran > 10MB.";
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit();
+            $_SESSION['error'] = "Format panduan tidak didukung atau ukuran > 10MB.";
+            redirectBack();
         }
     }
 
-    // ✅ Tambah — Ambil data lama hanya untuk edit
+    // Edit
     if ($action === 'edit') {
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) {
             $_SESSION['error'] = "ID tidak valid.";
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit();
+            redirectBack();
         }
 
-        // Ambil data lama untuk cleanup
-        $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM kompetisi WHERE id = ? AND id_ormawa = ?");
-        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
-        mysqli_stmt_execute($stmt);
-        $old = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-        mysqli_stmt_close($stmt);
+        // ✅ Cek kepemilikan
+        $where = $user_level === 1 ? "id = ?" : "id = ? AND id_ormawa = ?";
+        $stmt = $koneksi->prepare("SELECT gambar, file_panduan FROM kompetisi WHERE $where");
+        if ($user_level === 1) {
+            $stmt->bind_param("i", $id);
+        } else {
+            $stmt->bind_param("ii", $id, $ormawa_id_restricted);
+        }
+        $stmt->execute();
+        $old = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
         if (!$old) {
             $_SESSION['error'] = "Kompetisi tidak ditemukan atau bukan milik Anda.";
-            header("Location: " . $_SERVER['HTTP_REFERER']);
-            exit();
+            redirectBack();
         }
 
-        // Gunakan nama file lama jika tidak diupload baru
         $gambar = $gambar ?: $old['gambar'];
         $file_panduan = $file_panduan ?: $old['file_panduan'];
 
-        // ✅ Hapus file lama jika diganti
         if ($_FILES['gambar']['name'] && $old['gambar'] && $old['gambar'] !== $gambar) {
             if (file_exists($uploadDir . $old['gambar'])) unlink($uploadDir . $old['gambar']);
         }
@@ -108,82 +148,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (file_exists($uploadDir . $old['file_panduan'])) unlink($uploadDir . $old['file_panduan']);
         }
 
-        // ✅ UPDATE
-        $stmt = mysqli_prepare($koneksi, "
+        $stmt = $koneksi->prepare("
             UPDATE kompetisi SET
-                nama_kompetisi = ?, penyelenggara = ?, periode = ?, 
+                id_ormawa = ?, nama_kompetisi = ?, penyelenggara = ?, periode = ?, 
                 deadline = ?, deskripsi = ?, gambar = ?, file_panduan = ?
-            WHERE id = ? AND id_ormawa = ?
+            WHERE id = ?
         ");
-        mysqli_stmt_bind_param($stmt, "sssssssi", 
-            $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id, $ormawa_id
+        $stmt->bind_param("isssssssi", 
+            $target_ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id
         );
 
-    } else {
-        // ✅ INSERT — id_ormawa dari SESSION
-        $stmt = mysqli_prepare($koneksi, "
+    } else { // Tambah
+        $stmt = $koneksi->prepare("
             INSERT INTO kompetisi (
                 id_ormawa, nama_kompetisi, penyelenggara, periode, 
                 deadline, deskripsi, gambar, file_panduan
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        mysqli_stmt_bind_param($stmt, "isssssss", 
-            $ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
+        $stmt->bind_param("isssssss", 
+            $target_ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
         );
     }
 
-    if (mysqli_stmt_execute($stmt)) {
+    if ($stmt->execute()) {
         $_SESSION['success'] = $action === 'edit' ? "Kompetisi berhasil diperbarui!" : "Kompetisi berhasil ditambahkan!";
     } else {
-        // Cleanup file jika gagal
         if ($action !== 'edit' && $gambar && file_exists($uploadDir . $gambar)) unlink($uploadDir . $gambar);
         if ($action !== 'edit' && $file_panduan && file_exists($uploadDir . $file_panduan)) unlink($uploadDir . $file_panduan);
-        $_SESSION['error'] = "Gagal menyimpan: " . mysqli_stmt_error($stmt);
+        $_SESSION['error'] = "Gagal menyimpan: " . $stmt->error;
     }
-    mysqli_stmt_close($stmt);
-
-    header("Location: " . $_SERVER['HTTP_REFERER']);
-    exit();
+    $stmt->close();
+    redirectBack();
 }
 
-// === AKSI: HAPUS (via GET) ===
+// === HAPUS ===
 if (isset($_GET['action']) && $_GET['action'] === 'delete') {
     $id = (int)($_GET['id'] ?? 0);
-
-    if ($id > 0) {
-        // Ambil data untuk hapus file
-        $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM kompetisi WHERE id = ? AND id_ormawa = ?");
-        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
-        mysqli_stmt_execute($stmt);
-        $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-        mysqli_stmt_close($stmt);
-
-        if ($row) {
-            // Hapus dari DB
-            $stmt = mysqli_prepare($koneksi, "DELETE FROM kompetisi WHERE id = ? AND id_ormawa = ?");
-            mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
-            if (mysqli_stmt_execute($stmt)) {
-                // Hapus file
-                $uploadDir = '../../uploads/kompetisi/';
-                if ($row['gambar'] && file_exists($uploadDir . $row['gambar'])) unlink($uploadDir . $row['gambar']);
-                if ($row['file_panduan'] && file_exists($uploadDir . $row['file_panduan'])) unlink($uploadDir . $row['file_panduan']);
-                $_SESSION['success'] = "Kompetisi berhasil dihapus!";
-            } else {
-                $_SESSION['error'] = "Gagal menghapus dari database.";
-            }
-            mysqli_stmt_close($stmt);
-        } else {
-            $_SESSION['error'] = "Kompetisi tidak ditemukan atau bukan milik Anda.";
-        }
-    } else {
+    if ($id <= 0) {
         $_SESSION['error'] = "ID tidak valid.";
+        redirectBack();
     }
 
-    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'Kompetisi.php'));
-    exit();
+    // ✅ Cek kepemilikan
+    $where = $user_level === 1 ? "id = ?" : "id = ? AND id_ormawa = ?";
+    $stmt = $koneksi->prepare("SELECT gambar, file_panduan FROM kompetisi WHERE $where");
+    if ($user_level === 1) {
+        $stmt->bind_param("i", $id);
+    } else {
+        $stmt->bind_param("ii", $id, $ormawa_id_restricted);
+    }
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($row) {
+        $stmt = $koneksi->prepare("DELETE FROM kompetisi WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        if ($stmt->execute()) {
+            if ($row['gambar'] && file_exists($uploadDir . $row['gambar'])) unlink($uploadDir . $row['gambar']);
+            if ($row['file_panduan'] && file_exists($uploadDir . $row['file_panduan'])) unlink($uploadDir . $row['file_panduan']);
+            $_SESSION['success'] = "Kompetisi berhasil dihapus!";
+        } else {
+            $_SESSION['error'] = "Gagal menghapus dari database.";
+        }
+        $stmt->close();
+    } else {
+        $_SESSION['error'] = "Kompetisi tidak ditemukan atau bukan milik Anda.";
+    }
+    redirectBack();
 }
 
-// Redirect default
-header("Location: Kompetisi.php");
-exit();
+$_SESSION['error'] = "Aksi tidak dikenali.";
+redirectBack();
 ?>

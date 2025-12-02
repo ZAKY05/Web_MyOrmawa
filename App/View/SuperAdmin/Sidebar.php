@@ -35,13 +35,13 @@
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=account">
             <i class="fa-solid fa-id-card"></i>
-            <span>Account Ormawa</span></a>
+            <span>Account User</span></a>
     </li>
 
     <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=event">
             <i class="fas fa-calendar-week"></i>
-            <span>Event</span></a>
+            <span>Event Ormawa</span></a>
     </li>
 
     <!-- Nav Item - Utilities Collapse Menu -->
@@ -80,7 +80,7 @@
             <span>Kompetisi</span></a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="Index.php ?page=kompetisi">
+        <a class="nav-link" href="Index.php ?page=beasiswa">
         <i class="fas fa-user-graduate"></i>
             <span>Beasiswa</span></a>
     </li>

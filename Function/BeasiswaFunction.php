@@ -1,27 +1,40 @@
 <?php
 session_start();
-// ✅ AMAN: include dengan error handling
+
+// ✅ Koneksi
 if (!file_exists(__DIR__ . '/../Config/ConnectDB.php')) {
     $_SESSION['error'] = "File koneksi tidak ditemukan.";
-    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
     exit();
 }
 require_once __DIR__ . '/../Config/ConnectDB.php';
 
-// ✅ Validasi koneksi & session
-if (!$koneksi || mysqli_connect_errno()) {
-    $_SESSION['error'] = "Koneksi database gagal.";
-    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
-    exit();
-}
-
-if (!isset($_SESSION['user_id']) || empty($_SESSION['ormawa_id'])) {
-    $_SESSION['error'] = "Akses ditolak: login sebagai ORMawa diperlukan.";
+// ✅ Validasi login
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['error'] = "Silakan login terlebih dahulu.";
     header("Location: ../App/View/SuperAdmin/Login.php");
     exit();
 }
 
-$ormawa_id = (int)$_SESSION['ormawa_id'];
+// ✅ Tentukan level & batasan ORMawa
+$user_level = (int)($_SESSION['user_level'] ?? 0);
+$ormawa_id_restricted = null; // null = SuperAdmin (semua), angka = hanya milik Ormawa tsb
+
+if ($user_level === 2) { // Admin Organisasi
+    $ormawa_id_restricted = (int)($_SESSION['ormawa_id'] ?? 0);
+    if ($ormawa_id_restricted <= 0) {
+        $_SESSION['error'] = "Anda tidak terdaftar di ORMawa manapun.";
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+        exit();
+    }
+} elseif ($user_level !== 1) { // Bukan SuperAdmin (1) atau Admin (2)
+    $_SESSION['error'] = "Akses ditolak.";
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
+    exit();
+}
+
+$uploadDir = '../uploads/beasiswa/';
+if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
 // === TAMBAH / EDIT ===
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -38,12 +51,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    $uploadDir = '../uploads/beasiswa/';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-        $_SESSION['error'] = "Gagal membuat folder upload.";
+    // 🔑 Ambil id_ormawa tergantung level
+    $submitted_ormawa_id = null;
+    if ($user_level === 1) { // SuperAdmin
+        $submitted_ormawa_id = (int)($_POST['id_ormawa'] ?? 0);
+        if ($submitted_ormawa_id <= 0) {
+            $_SESSION['error'] = "Ormawa wajib dipilih.";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit();
+        }
+    } else { // Admin Organisasi
+        $submitted_ormawa_id = $ormawa_id_restricted;
+    }
+
+    // Validasi: pastikan ORMawa benar-benar ada
+    $check = mysqli_prepare($koneksi, "SELECT id FROM ormawa WHERE id = ?");
+    mysqli_stmt_bind_param($check, "i", $submitted_ormawa_id);
+    mysqli_stmt_execute($check);
+    if (!mysqli_stmt_get_result($check)->num_rows) {
+        $_SESSION['error'] = "Ormawa tidak valid.";
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit();
     }
+    mysqli_stmt_close($check);
 
     $gambar = '';
     $file_panduan = '';
@@ -95,14 +125,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE id = ? AND id_ormawa = ?");
-        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
+        // ✅ Cek kepemilikan: SuperAdmin boleh semua, Admin hanya miliknya
+        $where = $user_level === 1 ? "id = ?" : "id = ? AND id_ormawa = ?";
+        $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE $where");
+        if ($user_level === 1) {
+            mysqli_stmt_bind_param($stmt, "i", $id);
+        } else {
+            mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id_restricted);
+        }
         mysqli_stmt_execute($stmt);
         $old = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
         mysqli_stmt_close($stmt);
 
         if (!$old) {
-            $_SESSION['error'] = "Beasiswa tidak ditemukan.";
+            $_SESSION['error'] = "Beasiswa tidak ditemukan atau bukan milik Anda.";
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit();
         }
@@ -119,15 +155,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = mysqli_prepare($koneksi, "
             UPDATE beasiswa SET 
-                nama_beasiswa = ?, penyelenggara = ?, periode = ?, 
+                id_ormawa = ?, nama_beasiswa = ?, penyelenggara = ?, periode = ?, 
                 deadline = ?, deskripsi = ?, gambar = ?, file_panduan = ?
-            WHERE id = ? AND id_ormawa = ?
+            WHERE id = ?
         ");
-        $bind = mysqli_stmt_bind_param($stmt, "sssssssi", 
-            $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id, $ormawa_id
+        $bind = mysqli_stmt_bind_param($stmt, "isssssssi", 
+            $submitted_ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id
         );
-    } else {
-        // Tambah
+
+    } else { // Tambah
         $stmt = mysqli_prepare($koneksi, "
             INSERT INTO beasiswa (
                 id_ormawa, nama_beasiswa, penyelenggara, periode, 
@@ -135,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $bind = mysqli_stmt_bind_param($stmt, "isssssss", 
-            $ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
+            $submitted_ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
         );
     }
 
@@ -165,19 +201,25 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete') {
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) {
         $_SESSION['error'] = "ID tidak valid.";
-        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
         exit();
     }
 
-    $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE id = ? AND id_ormawa = ?");
-    mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
+    // ✅ Cek kepemilikan
+    $where = $user_level === 1 ? "id = ?" : "id = ? AND id_ormawa = ?";
+    $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE $where");
+    if ($user_level === 1) {
+        mysqli_stmt_bind_param($stmt, "i", $id);
+    } else {
+        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id_restricted);
+    }
     mysqli_stmt_execute($stmt);
     $row = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
     mysqli_stmt_close($stmt);
 
     if ($row) {
-        $stmt = mysqli_prepare($koneksi, "DELETE FROM beasiswa WHERE id = ? AND id_ormawa = ?");
-        mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
+        $stmt = mysqli_prepare($koneksi, "DELETE FROM beasiswa WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "i", $id);
         if (mysqli_stmt_execute($stmt)) {
             if ($row['gambar'] && file_exists($uploadDir . $row['gambar'])) unlink($uploadDir . $row['gambar']);
             if ($row['file_panduan'] && file_exists($uploadDir . $row['file_panduan'])) unlink($uploadDir . $row['file_panduan']);
@@ -187,13 +229,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete') {
         }
         mysqli_stmt_close($stmt);
     } else {
-        $_SESSION['error'] = "Beasiswa tidak ditemukan.";
+        $_SESSION['error'] = "Beasiswa tidak ditemukan atau bukan milik Anda.";
     }
 
-    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
     exit();
 }
 
-header("Location: ../Admin/Beasiswa.php");
+header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
 exit();
 ?>

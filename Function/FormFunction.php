@@ -23,7 +23,30 @@ switch ($action) {
             header("Location: " . get_redirect_url('oprec', 'error=user_not_logged_in'));
             exit;
         }
-        $user_id = (int)$_SESSION['user_id'];
+        
+        $current_user_level = (int)$_SESSION['user_level'];
+        $current_user_id = (int)$_SESSION['user_id'];
+        
+        // If SuperAdmin (level 1), allow selecting target user
+        if ($current_user_level == 1) {
+            $user_id = (int)($_POST['target_user_id'] ?? 0);
+            // Validate that the selected user is level 2
+            if ($user_id > 0) {
+                $stmt_validate = $koneksi->prepare("SELECT id FROM user WHERE id = ? AND level = 2");
+                $stmt_validate->bind_param("i", $user_id);
+                $stmt_validate->execute();
+                $result_validate = $stmt_validate->get_result();
+                if ($result_validate->num_rows == 0) {
+                    $user_id = $current_user_id; // Fallback to current user if invalid
+                }
+                $stmt_validate->close();
+            } else {
+                $user_id = $current_user_id; // Use current user if no target selected
+            }
+        } else {
+            $user_id = $current_user_id; // Regular users create for themselves
+        }
+        
         $judul = trim($_POST['judul'] ?? '');
         $deskripsi = trim($_POST['deskripsi'] ?? '');
         $jenis_form = trim($_POST['jenis_form'] ?? 'anggota');
@@ -45,7 +68,7 @@ switch ($action) {
             $check = getimagesize($_FILES["gambar"]["tmp_name"]);
 
             if ($check !== false && $_FILES["gambar"]["size"] <= 5000000 && in_array($imageFileType, ["jpg", "png", "jpeg", "gif"])) {
-                $gambar_nama = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $gambar_nama_asli);
+                $gambar_nama = uniqid() . '' . preg_replace('/[^A-Za-z0-9.-]/', '_', $gambar_nama_asli);
                 if (!move_uploaded_file($_FILES["gambar"]["tmp_name"], $target_dir . $gambar_nama)) {
                     $gambar_nama = '';
                 }
@@ -100,6 +123,23 @@ switch ($action) {
         $gambar_nama = $gambar_lama;
         if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0 && $_FILES['gambar']['size'] > 0) {
             // Image upload logic here...
+            $target_dir = "../uploads/form/";
+            $gambar_nama_asli = basename($_FILES["gambar"]["name"]);
+            $imageFileType = strtolower(pathinfo($target_dir . $gambar_nama_asli, PATHINFO_EXTENSION));
+            $check = getimagesize($_FILES["gambar"]["tmp_name"]);
+
+            if ($check !== false && $_FILES["gambar"]["size"] <= 5000000 && in_array($imageFileType, ["jpg", "png", "jpeg", "gif"])) {
+                // Delete old image if exists
+                if ($gambar_lama && file_exists($target_dir . $gambar_lama)) {
+                    unlink($target_dir . $gambar_lama);
+                }
+                $gambar_nama = uniqid() . '' . preg_replace('/[^A-Za-z0-9.-]/', '_', $gambar_nama_asli);
+                if (!move_uploaded_file($_FILES["gambar"]["tmp_name"], $target_dir . $gambar_nama)) {
+                    $gambar_nama = $gambar_lama; // Keep old image if upload fails
+                }
+            } else {
+                $gambar_nama = $gambar_lama; // Keep old image if validation fails
+            }
         }
 
         $status = trim($_POST['status'] ?? 'private'); // Get status from POST
@@ -108,9 +148,25 @@ switch ($action) {
             $status = 'private'; // Default to private if invalid
         }
 
-        $stmt = $koneksi->prepare("UPDATE form_info SET judul = ?, deskripsi = ?, gambar = ?, status = ? WHERE id = ?");
+        // Handle user assignment for SuperAdmin
+        $target_user_id = $row_check['user_id']; // Default to current owner
+        if ($current_user_level == 1) {
+            $new_target_user = (int)($_POST['target_user_id'] ?? 0);
+            if ($new_target_user > 0) {
+                $stmt_validate = $koneksi->prepare("SELECT id FROM user WHERE id = ? AND level = 2");
+                $stmt_validate->bind_param("i", $new_target_user);
+                $stmt_validate->execute();
+                $result_validate = $stmt_validate->get_result();
+                if ($result_validate->num_rows > 0) {
+                    $target_user_id = $new_target_user;
+                }
+                $stmt_validate->close();
+            }
+        }
+
+        $stmt = $koneksi->prepare("UPDATE form_info SET judul = ?, deskripsi = ?, gambar = ?, status = ?, user_id = ? WHERE id = ?");
         if ($stmt) {
-            $stmt->bind_param("ssssi", $judul, $deskripsi, $gambar_nama, $status, $form_info_id); // Add status to bind_param
+            $stmt->bind_param("ssssii", $judul, $deskripsi, $gambar_nama, $status, $target_user_id, $form_info_id); // Add target_user_id to bind_param
             $stmt->execute();
             $stmt->close();
             header("Location: " . get_redirect_url($redirect_page, "form_id=$form_info_id&success=form"));

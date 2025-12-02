@@ -5,7 +5,7 @@ $active_form_id = isset($_GET['form_id']) ? (int)$_GET['form_id'] : 0;
 $show_create_form = isset($_GET['create']) && $_GET['create'] == '1';
 $view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_submissions'] : 0;
 
-include '../SuperAdmin/ViewSubmissions.php';
+include '../Admin/ViewSubmissions.php';
 
 // --- PERUBAHAN: Query difilter berdasarkan RBAC ---
 $query = "
@@ -89,7 +89,7 @@ if ($active_form_id > 0) {
 }
 // --- SAMPAI SINI ---
 
-include('../SuperAdmin/Header.php');
+include('../Admin/Header.php');
 ?>
 
 <div class="container-fluid">
@@ -360,7 +360,7 @@ include('../SuperAdmin/Header.php');
         <div class="col-xl-8 col-lg-7">
             <?php if ($view_submissions_form_id > 0): ?>
                 <!-- Tampilkan komponen submissions -->
-                <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id); ?>
+                <?php displaySubmissionsForForm($koneksi, $view_submissions_form_id, $_SESSION['user_id']); ?>
             <?php elseif ($active_form_id > 0 && $form_detail): ?>
                 <!-- Original Form Editing Content -->
                 <div class="row">
@@ -660,4 +660,4 @@ include('../SuperAdmin/Header.php');
     });
 </script>
 
-<?php include('../SuperAdmin/Footer.php'); ?>
+<?php include('../Admin/Footer.php'); ?>

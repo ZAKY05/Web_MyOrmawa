@@ -73,8 +73,14 @@ if ($koneksi) {
                                 <td><code><?= number_format($loc['lat'], 6); ?>, <?= number_format($loc['lng'], 6); ?></code></td>
                                 <td><?= (int)$loc['radius_default']; ?></td>
                                 <td>
-                                    <button class="btn btn-warning btn-circle btn-sm" 
-                                            onclick='prepareEdit(<?= json_encode($loc, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT); ?>)' 
+                                    <button class="btn btn-warning btn-circle btn-sm edit-btn" 
+                                            data-id="<?= (int)$loc['id']; ?>"
+                                            data-nama="<?= htmlspecialchars($loc['nama_lokasi']); ?>"
+                                            data-lat="<?= $loc['lat']; ?>"
+                                            data-lng="<?= $loc['lng']; ?>"
+                                            data-radius="<?= (int)$loc['radius_default']; ?>"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#lokasiModal"
                                             title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -108,77 +114,28 @@ function prepareAdd() {
     document.getElementById('lokasi_id').value = '';
 }
 
-function prepareEdit(loc) {
-    document.getElementById('lokasiModalTitle').innerText = 'Edit Lokasi';
-    document.getElementById('lokasi_id').value = loc.id;
-    document.getElementById('nama_lokasi').value = loc.nama_lokasi;
-    document.getElementById('lat').value = loc.lat;
-    document.getElementById('lng').value = loc.lng;
-    document.getElementById('radius_default').value = loc.radius_default;
-}
-
-async function saveLocation() {
-    const form = document.getElementById('formLokasi');
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-
-    const formData = new FormData(form);
-    const id = document.getElementById('lokasi_id').value;
-    const action = id ? 'edit' : 'add';
-    formData.append('action', action);
-
-    const btn = document.getElementById('btnSimpanLokasi');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
-
-    try {
-        const response = await fetch(LOCATION_API, {
-            method: 'POST',
-            body: formData,
-            headers: { 'Accept': 'application/json' }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
-                text: data.message,
-                timer: 2000,
-                showConfirmButton: false
-            }).then(() => {
-                location.reload();
-            });
-        } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal!',
-                text: data.message || 'Terjadi kesalahan saat menyimpan.',
-                timer: 3000,
-                showConfirmButton: false
-            });
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error!',
-            text: 'Gagal terhubung ke server.',
-            timer: 3000,
-            showConfirmButton: false
-        });
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-}
-
-// Hapus dengan SweetAlert
+// ✅ Event listener untuk button edit menggunakan data attributes
 document.addEventListener('DOMContentLoaded', () => {
+    // Handle Edit Button
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const nama = this.getAttribute('data-nama');
+            const lat = this.getAttribute('data-lat');
+            const lng = this.getAttribute('data-lng');
+            const radius = this.getAttribute('data-radius');
+            
+            // Set form values
+            document.getElementById('lokasiModalTitle').innerText = 'Edit Lokasi';
+            document.getElementById('lokasi_id').value = id;
+            document.getElementById('nama_lokasi').value = nama;
+            document.getElementById('lat').value = lat;
+            document.getElementById('lng').value = lng;
+            document.getElementById('radius_default').value = radius;
+        });
+    });
+
+    // Handle Delete Button
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
@@ -218,4 +175,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+async function saveLocation() {
+    const form = document.getElementById('formLokasi');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const formData = new FormData(form);
+    const id = document.getElementById('lokasi_id').value;
+    const action = id ? 'edit' : 'add';
+    formData.append('action', action);
+
+    const btn = document.getElementById('btnSimpanLokasi');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+
+    try {
+        const response = await fetch(LOCATION_API, {
+            method: 'POST',
+            body: formData,
+            headers: { 'Accept': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Tutup modal terlebih dahulu
+            const modal = bootstrap.Modal.getInstance(document.getElementById('lokasiModal'));
+            if (modal) modal.hide();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                location.reload();
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: data.message || 'Terjadi kesalahan saat menyimpan.',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: 'Gagal terhubung ke server.',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
 </script>

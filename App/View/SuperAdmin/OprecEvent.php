@@ -7,11 +7,30 @@ $view_submissions_form_id = isset($_GET['view_submissions']) ? (int)$_GET['view_
 
 include '../SuperAdmin/ViewSubmissions.php';
 
-// --- PERUBAHAN: Query difilter untuk jenis_form = 'event' ---
+// Function to get level 2 users
+function getLevel2Users($koneksi) {
+    $users = [];
+    $result = mysqli_query($koneksi, "
+        SELECT u.id, u.full_name, o.nama_ormawa 
+        FROM user u
+        JOIN ormawa o ON u.id_ormawa = o.id
+        WHERE u.level = 2 
+        ORDER BY u.full_name ASC
+    ");
+    while ($row = mysqli_fetch_assoc($result)) {
+        $users[] = $row;
+    }
+    return $users;
+}
+
+$level2_users = getLevel2Users($koneksi);
+
+// --- PERUBAHAN: Query difilter untuk jenis_form = 'event' dan JOIN ormawa ---
 $forms_result = mysqli_query($koneksi, "
-    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, u.full_name as pembuat_nama
+    SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.created_at, u.full_name as pembuat_nama, o.nama_ormawa
     FROM form_info fi
     JOIN user u ON fi.user_id = u.id
+    JOIN ormawa o ON u.id_ormawa = o.id
     WHERE fi.jenis_form = 'event'
     ORDER BY fi.created_at DESC
 ");
@@ -24,8 +43,8 @@ while ($row = mysqli_fetch_assoc($forms_result)) {
 $form_detail = null;
 $form_fields = [];
 if ($active_form_id > 0) {
-    // --- PERUBAHAN: Pastikan form yang di-load adalah tipe 'event' ---
-    $form_detail_query = "SELECT id, judul, deskripsi, gambar, status FROM form_info WHERE id = ? AND jenis_form = 'event'";
+    // --- PERUBAHAN: Pastikan form yang di-load adalah tipe 'event' dan JOIN ormawa ---
+    $form_detail_query = "SELECT fi.id, fi.judul, fi.deskripsi, fi.gambar, fi.status, fi.user_id, o.nama_ormawa FROM form_info fi JOIN user u ON fi.user_id = u.id JOIN ormawa o ON u.id_ormawa = o.id WHERE fi.id = ? AND fi.jenis_form = 'event'";
     $stmt = $koneksi->prepare($form_detail_query);
     $stmt->bind_param("i", $active_form_id);
     $stmt->execute();
@@ -220,7 +239,7 @@ include('../SuperAdmin/Header.php');
                                             <?php if ($active_form_id == $form['id']): ?>
                                                 <span class="badge badge-success badge-sm ml-1">Aktif</span>
                                             <?php endif; ?>
-                                            <small class="text-muted d-block">oleh <?= htmlspecialchars($form['pembuat_nama']) ?></small>
+                                            <small class="text-muted d-block">oleh <?= htmlspecialchars($form['nama_ormawa']) ?></small> <!-- Changed to nama_ormawa -->
                                             <p class="text-muted small mb-0 mt-1">
                                                 <?= htmlspecialchars(substr($form['deskripsi'], 0, 60)) . (strlen($form['deskripsi']) > 60 ? '...' : '') ?>
                                             </p>
@@ -295,6 +314,36 @@ include('../SuperAdmin/Header.php');
                             <?php endif; ?>
 
                             <div class="form-group">
+                                <label class="small font-weight-bold">Dibuat untuk Ormawa</label>
+                                <?php if ($_SESSION['user_level'] == 1): // Only show for SuperAdmin ?>
+                                    <select name="target_user_id" class="form-control" required>
+                                        <option value="">Pilih Admin Ormawa</option>
+                                        <?php foreach ($level2_users as $user): ?>
+                                            <option value="<?= $user['id'] ?>" <?= ($form_detail && $form_detail['user_id'] == $user['id']) ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($user['nama_ormawa']) ?> (<?= htmlspecialchars($user['full_name']) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php else: ?>
+                                    <input type="hidden" name="target_user_id" value="<?= $_SESSION['user_id'] ?>">
+                                    <?php 
+                                    // Get current user's ormawa name
+                                    $current_user_ormawa = '';
+                                    $current_user_query = mysqli_query($koneksi, "
+                                        SELECT o.nama_ormawa 
+                                        FROM user u 
+                                        JOIN ormawa o ON u.id_ormawa = o.id 
+                                        WHERE u.id = " . (int)$_SESSION['user_id']
+                                    );
+                                    if ($current_user_query && $row = mysqli_fetch_assoc($current_user_query)) {
+                                        $current_user_ormawa = $row['nama_ormawa'];
+                                    }
+                                    ?>
+                                    <input type="text" class="form-control" value="<?= htmlspecialchars($current_user_ormawa ?: $_SESSION['full_name'] ?: 'Current User') ?>" readonly>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="form-group">
                                 <label class="small font-weight-bold">Judul Formulir <span class="text-danger">*</span></label>
                                 <input type="text" name="judul" class="form-control" value="<?= $form_detail ? htmlspecialchars($form_detail['judul']) : '' ?>" placeholder="Masukkan judul formulir" required>
                             </div>
@@ -310,6 +359,7 @@ include('../SuperAdmin/Header.php');
                                     <div class="mb-2">
                                         <img src="../../../uploads/form/<?= htmlspecialchars($form_detail['gambar']) ?>" alt="Cover" class="img-thumbnail" style="max-height: 120px;">
                                     </div>
+                                    
                                 <?php endif; ?>
                                 <input type="file" name="gambar" class="form-control-file" accept="image/*">
                                 <?php if ($form_detail && $form_detail['gambar']): ?>

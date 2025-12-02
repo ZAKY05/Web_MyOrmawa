@@ -148,9 +148,9 @@ try {
         $id = (int)($_GET['kehadiran_id'] ?? 0);
         if ($id <= 0) throw new Exception("ID sesi tidak valid.");
 
-        $query = "SELECT a.nama, al.waktu_absen, al.tipe_absen 
+        $query = "SELECT u.full_name, al.waktu_absen, al.tipe_absen 
                   FROM absensi_log al
-                  JOIN anggota a ON al.anggota_id = a.id
+                  JOIN user u ON al.user_id = u.id
                   WHERE al.kehadiran_id = ?
                   ORDER BY al.waktu_absen DESC";
         

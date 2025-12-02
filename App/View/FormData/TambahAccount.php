@@ -1,41 +1,98 @@
-<div class="modal fade" id="tambahAccountModal" tabindex="-1" aria-labelledby="tambahAccountModalLabel" aria-hidden="true">
+<div class="modal fade" id="tambahAccountModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="formTitle">Tambah Akun Ormawa</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="formTitle">Tambah Akun</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="accountForm" action="../../../Function/AccountFunction.php" method="POST">
                     <input type="hidden" name="action" id="formAction" value="add">
                     <input type="hidden" name="id" id="editId" value="">
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="nama" class="form-label">Nama Lengkap</label>
-                            <input type="text" class="form-control" id="nama" name="full_name" required>
+                    <?php
+                    $user_level = (int)($_SESSION['user_level'] ?? 0);
+                    ?>
+
+                    <?php if ($user_level === 1): ?>
+                        <!-- SuperAdmin: Pilih Ormawa & Level -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Ormawa <span class="text-danger">*</span></label>
+                                <select class="form-select" name="id_ormawa" id="ormawa_id" required>
+                                    <option value="">Pilih Ormawa</option>
+                                    <?php
+                                    $ormawas = mysqli_query($koneksi, "SELECT id, nama_ormawa FROM ormawa ORDER BY nama_ormawa");
+                                    while ($o = mysqli_fetch_assoc($ormawas)):
+                                    ?>
+                                        <option value="<?= (int)$o['id']; ?>">
+                                            <?= htmlspecialchars($o['nama_ormawa']); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Level <span class="text-danger">*</span></label>
+                                <select class="form-select" name="level" id="level" required>
+                                    <option value="">Pilih Level</option>
+                                    <option value="2">Admin</option>
+                                    <option value="3">Pengurus</option>
+                                    <option value="4">Mahasiswa</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="nim" class="form-label">NIM</label>
-                            <input type="text" class="form-control" id="nim" name="nim" required>
+
+                    <?php elseif ($user_level === 2): ?>
+                        <!-- Admin Organisasi: Otomatis -->
+                        <?php
+                        $ormawa_id = (int)($_SESSION['ormawa_id'] ?? 0);
+                        $ormawa_nama = htmlspecialchars($_SESSION['ormawa_nama'] ?? 'Ormawa Anda');
+                        ?>
+                        <input type="hidden" name="id_ormawa" value="<?= $ormawa_id; ?>">
+                        <input type="hidden" name="level" value="3">
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Ormawa</label>
+                                <input type="text" class="form-control" value="<?= $ormawa_nama; ?>" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Level</label>
+                                <input type="text" class="form-control" value="Pengurus" readonly>
+                            </div>
                         </div>
-                    </div>
+
+                    <?php else: ?>
+                        <div class="alert alert-danger">
+                            Anda tidak memiliki izin untuk menambah akun.
+                        </div>
+                        <script>document.querySelector('#accountForm button[type="submit"]').disabled = true;</script>
+                    <?php endif; ?>
 
                     <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="full_name" id="nama" required maxlength="50">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">NIM <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="nim" id="nim" required maxlength="20">
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="password" class="form-label">
-                            Password
-                            <small class="text-muted d-block">
-                                <em>Wajib saat tambah. Kosongkan saat edit jika tidak ingin ganti password.</em>
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" id="email" required maxlength="100">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Password <span class="text-danger">*</span>
+                            <small class="text-muted d-block" id="passwordHelp">
+                                Wajib saat tambah. Kosongkan saat edit jika tidak ingin ganti password.
                             </small>
                         </label>
-                        <input type="password" class="form-control" id="password" name="password">
+                        <input type="password" class="form-control" name="password" id="password" required minlength="6">
                     </div>
                 </form>
             </div>
@@ -52,44 +109,39 @@ function resetAccountForm() {
     document.getElementById('accountForm').reset();
     document.getElementById('formAction').value = 'add';
     document.getElementById('editId').value = '';
-    document.getElementById('formTitle').textContent = 'Tambah Akun Ormawa';
-    
-    const passField = document.getElementById('password');
-    passField.setAttribute('required', 'required');
-    passField.closest('.mb-3').querySelector('small').textContent =
+    document.getElementById('formTitle').textContent = 'Tambah Akun';
+    document.getElementById('password').setAttribute('required', 'required');
+    document.getElementById('passwordHelp').textContent =
         'Wajib saat tambah. Kosongkan saat edit jika tidak ingin ganti password.';
-}
 
-function editAccount(id, nama, nim, email) {
-    document.getElementById('formAction').value = 'edit';
-    document.getElementById('editId').value = id;
-    document.getElementById('nama').value = nama;
-    document.getElementById('nim').value = nim;
-    document.getElementById('email').value = email;
-    document.getElementById('password').value = '';
-    document.getElementById('formTitle').textContent = 'Edit Akun Ormawa';
-    
-    const passField = document.getElementById('password');
-    passField.removeAttribute('required');
-    passField.closest('.mb-3').querySelector('small').textContent =
-        'Kosongkan jika tidak ingin mengganti password.';
-    
-    const modal = bootstrap.Modal.getInstance(document.getElementById('tambahAccountModal')) ||
-                  new bootstrap.Modal(document.getElementById('tambahAccountModal'));
-    modal.show();
+    // Reset pilihan untuk SuperAdmin
+    const level = document.getElementById('level');
+    const ormawa = document.getElementById('ormawa_id');
+    if (level) level.value = '';
+    if (ormawa) ormawa.value = '';
 }
 
 function submitAccountForm() {
+    const nama = document.getElementById('nama').value.trim().toLowerCase();
+    const nim = document.getElementById('nim').value.trim().toLowerCase();
+    const forbidden = ['admin', 'hmj-ti', 'hmj ti', 'superadmin', 'root', 'guest'];
+
+    for (const term of forbidden) {
+        if (nama.includes(term) || nim.includes(term)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Input Tidak Diperbolehkan',
+                text: 'Nama/NIM tidak boleh mengandung: admin, HMJ-TI, superadmin, dll.',
+                timer: 3000,
+                showConfirmButton: false
+            });
+            return;
+        }
+    }
+
     const form = document.getElementById('accountForm');
     if (form.reportValidity()) {
-        const btn = document.querySelector('.modal-footer .btn-primary');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Memproses...';
-        btn.disabled = true;
         form.submit();
     }
 }
-
-// Reset form saat modal ditutup
-document.getElementById('tambahAccountModal').addEventListener('hidden.bs.modal', resetAccountForm);
 </script>

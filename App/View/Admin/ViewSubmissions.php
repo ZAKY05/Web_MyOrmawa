@@ -58,7 +58,7 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
         SELECT 
             s.id as submission_id,
             s.user_id, 
-            u.nama as user_nama, 
+            u.full_name as user_nama, 
             u.nim, 
             u.username, 
             u.email, 
