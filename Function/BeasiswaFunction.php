@@ -38,6 +38,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Validasi dan konversi deadline
+    if (!empty($deadline)) {
+        // Validasi format tanggal
+        if (!strtotime($deadline)) {
+            $_SESSION['error'] = "Format tanggal deadline tidak valid.";
+            header("Location: " . $_SERVER['HTTP_REFERER']);
+            exit();
+        }
+        // Pastikan format tanggal dalam format MySQL (YYYY-MM-DD)
+        $deadline = date('Y-m-d', strtotime($deadline));
+    } else {
+        $deadline = null; // Set ke NULL jika kosong
+    }
+
     $uploadDir = '../uploads/beasiswa/';
     if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
         $_SESSION['error'] = "Gagal membuat folder upload.";
