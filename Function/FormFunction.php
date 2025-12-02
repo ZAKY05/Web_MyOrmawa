@@ -98,19 +98,44 @@ switch ($action) {
 
         $gambar_lama = $row_check['gambar'] ?? '';
         $gambar_nama = $gambar_lama;
+        
+        // Proses upload gambar baru jika ada file yang diupload
         if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0 && $_FILES['gambar']['size'] > 0) {
-            // Image upload logic here...
+            $target_dir = "../uploads/form/";
+            $gambar_nama_asli = basename($_FILES["gambar"]["name"]);
+            $imageFileType = strtolower(pathinfo($target_dir . $gambar_nama_asli, PATHINFO_EXTENSION));
+            $check = getimagesize($_FILES["gambar"]["tmp_name"]);
+
+            if ($check !== false && $_FILES["gambar"]["size"] <= 5000000 && in_array($imageFileType, ["jpg", "png", "jpeg", "gif"])) {
+                // Hapus gambar lama jika ada
+                if ($gambar_lama && file_exists($target_dir . $gambar_lama)) {
+                    unlink($target_dir . $gambar_lama);
+                }
+                
+                // Buat nama file baru untuk mencegah konflik
+                $gambar_nama = uniqid() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $gambar_nama_asli);
+                
+                // Pindahkan file yang diupload
+                if (!move_uploaded_file($_FILES["gambar"]["tmp_name"], $target_dir . $gambar_nama)) {
+                    // Jika upload gagal, kembalikan ke gambar lama
+                    $gambar_nama = $gambar_lama;
+                }
+            } else {
+                // Jika file tidak valid, tetap gunakan gambar lama
+                $gambar_nama = $gambar_lama;
+            }
         }
 
-        $status = trim($_POST['status'] ?? 'private'); // Get status from POST
-        // Validate status to ensure it's either 'published' or 'private'
+        // Ambil status dari POST
+        $status = trim($_POST['status'] ?? 'private');
+        // Validasi status
         if (!in_array($status, ['published', 'private'])) {
-            $status = 'private'; // Default to private if invalid
+            $status = 'private';
         }
 
         $stmt = $koneksi->prepare("UPDATE form_info SET judul = ?, deskripsi = ?, gambar = ?, status = ? WHERE id = ?");
         if ($stmt) {
-            $stmt->bind_param("ssssi", $judul, $deskripsi, $gambar_nama, $status, $form_info_id); // Add status to bind_param
+            $stmt->bind_param("ssssi", $judul, $deskripsi, $gambar_nama, $status, $form_info_id);
             $stmt->execute();
             $stmt->close();
             header("Location: " . get_redirect_url($redirect_page, "form_id=$form_info_id&success=form"));
