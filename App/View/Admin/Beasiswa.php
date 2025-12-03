@@ -220,13 +220,13 @@ mysqli_stmt_close($stmt);
 
 <?php include('../FormData/TambahBeasiswa.php'); ?>
 <?php include('Footer.php'); ?>
+
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const UPLOAD_BASE_PATH = '../../../uploads/beasiswa/';
-
+    const UPLOAD_BASE_PATH = '../uploads/beasiswa/';
     // ✅ Notifikasi dari SESSION (pastikan KompetisiFunction.php pakai ini)
     <?php if (isset($_SESSION['success'])): ?>
         Swal.fire({
