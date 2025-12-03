@@ -43,28 +43,29 @@
                         </div>
 
                     <?php elseif ($user_level === 2): ?>
-                        <!-- Admin Organisasi: Otomatis -->
+                        <!-- Admin ORMawa: Hanya level 3/4 -->
                         <?php
                         $ormawa_id = (int)($_SESSION['ormawa_id'] ?? 0);
                         $ormawa_nama = htmlspecialchars($_SESSION['ormawa_nama'] ?? 'Ormawa Anda');
                         ?>
                         <input type="hidden" name="id_ormawa" value="<?= $ormawa_id; ?>">
-                        <input type="hidden" name="level" value="3">
-
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Ormawa</label>
                                 <input type="text" class="form-control" value="<?= $ormawa_nama; ?>" readonly>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Level</label>
-                                <input type="text" class="form-control" value="Pengurus" readonly>
+                                <label class="form-label">Level <span class="text-danger">*</span></label>
+                                <select class="form-select" name="level" id="level" required>
+                                    <option value="3">Pengurus</option>
+                                    <option value="4">Mahasiswa</option>
+                                </select>
                             </div>
                         </div>
 
                     <?php else: ?>
                         <div class="alert alert-danger">
-                            Anda tidak memiliki izin untuk menambah akun.
+                            Anda tidak memiliki izin.
                         </div>
                         <script>document.querySelector('#accountForm button[type="submit"]').disabled = true;</script>
                     <?php endif; ?>
@@ -114,10 +115,9 @@ function resetAccountForm() {
     document.getElementById('passwordHelp').textContent =
         'Wajib saat tambah. Kosongkan saat edit jika tidak ingin ganti password.';
 
-    // Reset pilihan untuk SuperAdmin
     const level = document.getElementById('level');
     const ormawa = document.getElementById('ormawa_id');
-    if (level) level.value = '';
+    if (level) level.value = '3'; // default Pengurus
     if (ormawa) ormawa.value = '';
 }
 
