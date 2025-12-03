@@ -33,6 +33,11 @@
             <span>Data Ormawa</span></a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="Index.php ?page=locabsen">
+        <i class="fas fa-map-marker-alt me-2"></i>
+            <span>Bank Lokasi</span></a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="Index.php ?page=account">
             <i class="fa-solid fa-id-card"></i>
             <span>Account User</span></a>

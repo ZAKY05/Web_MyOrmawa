@@ -32,22 +32,50 @@ try {
     if (!$koneksi) throw new Exception("Koneksi database gagal.");
 
     $user_id = $_SESSION['user_id'] ?? null;
-    $user_level = $_SESSION['user_level'] ?? 0;
-    $ormawa_id = $_SESSION['ormawa_id'] ?? 0;
+    $user_level = (int)($_SESSION['user_level'] ?? 0);
+    $session_ormawa_id = (int)($_SESSION['ormawa_id'] ?? 0);
 
-    if (!$user_id || $user_level != 2) {
-        throw new Exception("Akses ditolak. Hanya admin ORMawa yang dapat membuat sesi.");
+    if (!$user_id || ($user_level !== 1 && $user_level !== 2)) {
+        throw new Exception("Akses ditolak. Hanya SuperAdmin atau Admin ORMAWA.");
     }
 
     $action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+    // 🔑 Tentukan ormawa_id target (untuk operasi CRUD & get_bank)
+    $ormawa_id = null;
+
+    if ($user_level === 2) {
+        // Admin: harus dari session
+        $ormawa_id = $session_ormawa_id;
+        if ($ormawa_id <= 0) {
+            throw new Exception("Anda tidak terdaftar di ORMAWA manapun.");
+        }
+    } elseif ($user_level === 1) {
+        // SuperAdmin: ambil dari request (wajib)
+        $ormawa_id = (int)($_POST['id_ormawa'] ?? $_GET['id_ormawa'] ?? 0);
+        if ($ormawa_id <= 0) {
+            throw new Exception("Pilih ORMAWA terlebih dahulu.");
+        }
+    }
+
+    // ✅ Validasi ORMawa ID eksis di database
+    $checkStmt = mysqli_prepare($koneksi, "SELECT id FROM ormawa WHERE id = ?");
+    mysqli_stmt_bind_param($checkStmt, "i", $ormawa_id);
+    mysqli_stmt_execute($checkStmt);
+    $ormawaExists = mysqli_stmt_get_result($checkStmt)->fetch_assoc();
+    mysqli_stmt_close($checkStmt);
+    if (!$ormawaExists) {
+        throw new Exception("ORMAWA tidak ditemukan.");
+    }
 
     // --- PING ---
     if ($action === 'ping') {
         jsonResponse(true, 'OK');
     }
 
-    // --- GET BANK LOKASI ---
+    // --- GET BANK LOKASI (SuperAdmin & Admin) ---
     if ($action === 'get_bank') {
+        // ✅ Gunakan $ormawa_id yang sudah ditentukan (bukan session langsung)
         $stmt = mysqli_prepare($koneksi, "SELECT id, nama_lokasi, lat, lng, radius_default FROM lokasi_absen WHERE ormawa_id = ?");
         mysqli_stmt_bind_param($stmt, "i", $ormawa_id);
         mysqli_stmt_execute($stmt);
@@ -89,7 +117,7 @@ try {
         if (isset($_POST['use_location']) && !empty($_POST['id_lokasi_absen'])) {
             $id_lokasi_absen = (int)$_POST['id_lokasi_absen'];
 
-            // Validasi lokasi milik ORMawa
+            // ✅ Validasi: lokasi harus milik ORMawa target ($ormawa_id)
             $stmt = mysqli_prepare($koneksi, "SELECT id FROM lokasi_absen WHERE id = ? AND ormawa_id = ?");
             mysqli_stmt_bind_param($stmt, "ii", $id_lokasi_absen, $ormawa_id);
             mysqli_stmt_execute($stmt);
@@ -97,11 +125,11 @@ try {
             mysqli_stmt_close($stmt);
 
             if (!$lokasi_valid) {
-                throw new Exception("Lokasi tidak ditemukan atau bukan milik ORMawa Anda.");
+                throw new Exception("Lokasi tidak ditemukan atau bukan milik ORMawa yang dipilih.");
             }
         }
 
-        // ✅ Query sesuai struktur tabel: hanya 7 kolom
+        // ✅ Insert kehadiran dengan ormawa_id yang valid
         $stmt = mysqli_prepare($koneksi,
             "INSERT INTO kehadiran 
              (ormawa_id, judul_rapat, waktu_mulai, waktu_selesai, kode_unik, status, id_lokasi_absen) 
@@ -112,13 +140,13 @@ try {
 
         mysqli_stmt_bind_param(
             $stmt,
-            "issssi",    // i = ormawa_id, s = judul, s = mulai, s = selesai, s = kode_unik, i = id_lokasi_absen
-            $ormawa_id,
+            "issssi",
+            $ormawa_id,             // ✅ gunakan $ormawa_id yang sudah divalidasi
             $judul,
             $waktu_mulai,
             $waktu_selesai,
             $kode_unik,
-            $id_lokasi_absen  // NULL jika tidak dipilih
+            $id_lokasi_absen
         );
 
         if (mysqli_stmt_execute($stmt)) {
@@ -133,13 +161,14 @@ try {
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) throw new Exception("ID tidak valid.");
 
+        // ✅ Pastikan sesi milik ORMawa ini
         $stmt = mysqli_prepare($koneksi, "UPDATE kehadiran SET status = 'selesai' WHERE id = ? AND ormawa_id = ?");
         mysqli_stmt_bind_param($stmt, "ii", $id, $ormawa_id);
         
         if (mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) > 0) {
             jsonResponse(true, 'Sesi berhasil diakhiri.');
         } else {
-            throw new Exception("Sesi tidak ditemukan atau bukan milik Anda.");
+            throw new Exception("Sesi tidak ditemukan atau bukan milik ORMawa ini.");
         }
     }
 
@@ -147,6 +176,15 @@ try {
     if ($action === 'get_peserta') {
         $id = (int)($_GET['kehadiran_id'] ?? 0);
         if ($id <= 0) throw new Exception("ID sesi tidak valid.");
+
+        // ✅ Pastikan kehadiran milik ORMawa ini
+        $check = mysqli_prepare($koneksi, "SELECT id FROM kehadiran WHERE id = ? AND ormawa_id = ?");
+        mysqli_stmt_bind_param($check, "ii", $id, $ormawa_id);
+        mysqli_stmt_execute($check);
+        if (mysqli_stmt_num_rows(mysqli_stmt_get_result($check)) == 0) {
+            throw new Exception("Sesi tidak ditemukan atau bukan milik ORMAWA ini.");
+        }
+        mysqli_stmt_close($check);
 
         $query = "SELECT u.full_name, al.waktu_absen, al.tipe_absen 
                   FROM absensi_log al

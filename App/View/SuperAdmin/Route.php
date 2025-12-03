@@ -11,5 +11,6 @@ $routes = [
     'account'=>'../SuperAdmin/Account.php',
     'kompetisi'=>'Kompetisi.php',
     'beasiswa'=>'Beasiswa.php',
+    'locabsen'=>'LokasiAbsen.php',
 ];
 ?>
