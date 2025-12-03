@@ -121,7 +121,7 @@ function getUserDistribution($koneksi) {
                                             ?></div>
                                         </div>
                                         <div class="col-auto">
-                                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                                            <i class="fas fa-users fa-2x text-gray-300"></i>
                                         </div>
                                     </div>
                                 </div>
@@ -135,86 +135,6 @@ function getUserDistribution($koneksi) {
                                     <div class="row no-gutters align-items-center">
                                         <div class="col mr-2">
                                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                Total Event</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getTotalEvents($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Earnings (Monthly) Card Example -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-info shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                Total Pengguna</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getTotalUsers($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-users fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Pending Requests Card Example -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-warning shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                Total Submissions</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getTotalSubmissions($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-file-alt fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- New Card for Total Formulir -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-secondary shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                                                Total Formulir</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getTotalForms($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- New Card for Total Dokumen -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-danger shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
                                                 Total Dokumen</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
                                                 echo getTotalDocuments($koneksi);
@@ -228,13 +148,13 @@ function getUserDistribution($koneksi) {
                             </div>
                         </div>
 
-                        <!-- New Card for Active Events -->
+                        <!-- Earnings (Monthly) Card Example -->
                         <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card border-left-info shadow h-100 py-2">
                                 <div class="card-body">
                                     <div class="row no-gutters align-items-center">
                                         <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                                 Event Aktif</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
                                                 echo getActiveEvents($koneksi);
@@ -248,14 +168,14 @@ function getUserDistribution($koneksi) {
                             </div>
                         </div>
 
-                        <!-- New Card for Upcoming Events -->
+                        <!-- Pending Requests Card Example -->
                         <div class="col-xl-3 col-md-6 mb-4">
                             <div class="card border-left-warning shadow h-100 py-2">
                                 <div class="card-body">
                                     <div class="row no-gutters align-items-center">
                                         <div class="col mr-2">
                                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                Event Mendatang (7 Hari)</div>
+                                                Event Mendatang</div>
                                             <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
                                                 echo getUpcomingEvents($koneksi);
                                             ?></div>
@@ -267,8 +187,8 @@ function getUserDistribution($koneksi) {
                                 </div>
                             </div>
                         </div>
-                    </div>
 
+                       
                     <!-- Content Row -->
 
                     <div class="row">
@@ -357,185 +277,7 @@ function getUserDistribution($koneksi) {
 
                     <!-- Notifications Row -->
                     <div class="row">
-                        <!-- Upcoming Events Card -->
-                        <div class="col-xl-12 col-lg-12">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Event Mendatang</h6>
-                                </div>
-                                <div class="card-body">
-                                    <?php
-                                    // Query untuk mendapatkan event mendatang dalam 7 hari ke depan
-                                    $upcoming_events_query = "SELECT e.nama_event, e.tgl_mulai, e.tgl_selesai, e.deskripsi, o.nama_ormawa
-                                                              FROM event e
-                                                              JOIN ormawa o ON e.ormawa_id = o.id
-                                                              WHERE e.tgl_mulai BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-                                                              ORDER BY e.tgl_mulai ASC";
-                                    $upcoming_events_result = mysqli_query($koneksi, $upcoming_events_query);
-                                    $upcoming_events = [];
-                                    while($row = mysqli_fetch_assoc($upcoming_events_result)) {
-                                        $upcoming_events[] = $row;
-                                    }
-                                    ?>
-                                    <?php if (!empty($upcoming_events)): ?>
-                                        <div class="list-group">
-                                            <?php foreach ($upcoming_events as $event): ?>
-                                                <a href="Index.php?page=event" class="list-group-item list-group-item-action">
-                                                    <div class="d-flex w-100 justify-content-between">
-                                                        <h6 class="mb-1"><?php echo htmlspecialchars($event['nama_event']); ?></h6>
-                                                        <small><?php echo date('d M', strtotime($event['tgl_mulai'])); ?> - <?php echo date('d M', strtotime($event['tgl_selesai'])); ?></small>
-                                                    </div>
-                                                    <p class="mb-1"><?php echo htmlspecialchars($event['deskripsi']); ?></p>
-                                                    <small>Oleh: <?php echo htmlspecialchars($event['nama_ormawa']); ?></small>
-                                                </a>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="text-center py-3">
-                                            <i class="fas fa-calendar-check fa-3x text-gray-300 mb-3"></i>
-                                            <p class="text-gray-500">Tidak ada event mendatang dalam 7 hari ke depan.</p>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Quick Access Row -->
-                    <div class="row">
-                        <!-- Quick Access Card -->
-                        <div class="col-xl-12 col-lg-12">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Akses Cepat</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <!-- Ormawa Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-primary shadow h-100 py-2">
-                                                <a href="Index.php?page=ormawa" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                                    Ormawa</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-users fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Event Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-success shadow h-100 py-2">
-                                                <a href="Index.php?page=event" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                                    Event</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Account Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-info shadow h-100 py-2">
-                                                <a href="Index.php?page=account" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                                    Akun</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-user fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Form Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-warning shadow h-100 py-2">
-                                                <a href="Index.php?page=oprec" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                                    Form Anggota</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Event Form Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-danger shadow h-100 py-2">
-                                                <a href="Index.php?page=oprec-event" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                                                    Form Event</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-calendar-plus fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Document Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-secondary shadow h-100 py-2">
-                                                <a href="Index.php?page=document" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                                                                    Dokumen</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-file-pdf fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                       
                     <!-- Recent Activity Row -->
                     <div class="row">
                         <!-- Recent Events Table -->
