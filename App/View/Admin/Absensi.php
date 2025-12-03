@@ -1,35 +1,29 @@
 <?php
-// Gunakan __DIR__ untuk memastikan path relatif terhadap file ini
 include_once(__DIR__ . '/Header.php');
-// Path ke FormData (Satu folder di atas Admin, lalu masuk FormData)
 include_once(__DIR__ . '/../FormData/TambahAbsensi.php');
-// Path ke Config (Naik 3 level: Admin -> View -> App -> Root, lalu masuk Config)
-$path_koneksi = __DIR__ . '/../../../Config/ConnectDB.php';
 
+$path_koneksi = __DIR__ . '/../../../Config/ConnectDB.php';
 if (file_exists($path_koneksi)) {
     $koneksi = include($path_koneksi);
 } else {
     die("Error: File koneksi tidak ditemukan di $path_koneksi");
 }
 
-// Cek Session
 $user_level = $_SESSION['user_level'] ?? 0;
 $ormawa_id = $_SESSION['ormawa_id'] ?? 0;
 
-// Helper Function
 function getPesertaCount($koneksi, $kehadiran_id)
 {
-    if (!$koneksi)
-        return 0;
+    if (!$koneksi) return 0;
     $stmt = mysqli_prepare($koneksi, "SELECT COUNT(*) as c FROM absensi_log WHERE kehadiran_id = ?");
     mysqli_stmt_bind_param($stmt, "i", $kehadiran_id);
     mysqli_stmt_execute($stmt);
     $res = mysqli_stmt_get_result($stmt);
     $row = mysqli_fetch_assoc($res);
-    return $row ? (int) $row['c'] : 0;
+    mysqli_stmt_close($stmt);
+    return $row ? (int)$row['c'] : 0;
 }
 
-// Ambil Data Sesi
 $sessions = [];
 if ($user_level == 2 && $koneksi) {
     // ✅ Query dengan CASE: otomatis ubah status jadi 'selesai' jika waktu_selesai < sekarang
@@ -38,7 +32,7 @@ if ($user_level == 2 && $koneksi) {
             id, judul_rapat, waktu_mulai, waktu_selesai, kode_unik,
             CASE 
                 WHEN status = 'selesai' THEN 'selesai'
-                WHEN waktu_selesai <= NOW() THEN 'selesai'  -- ✅ Waktu habis → selesai
+                WHEN waktu_selesai <= NOW() THEN 'selesai'
                 ELSE status
             END AS status,
             ormawa_id
@@ -86,42 +80,38 @@ if ($user_level == 2 && $koneksi) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $no = 1;
-                            foreach ($sessions as $s): ?>
-                                <tr>
-                                    <td>
-                                        <?= $no++; ?>
-                                    </td>
-                                    <td>
-                                        <?= htmlspecialchars($s['judul_rapat']); ?>
-                                    </td>
+                            <?php $no = 1; foreach ($sessions as $s): ?>
+                                <tr data-ormawa-id="<?= (int)$s['ormawa_id']; ?>">
+                                    <td><?= $no++; ?></td>
+                                    <td><?= htmlspecialchars($s['judul_rapat']); ?></td>
                                     <td>
                                         <?= date('d M Y', strtotime($s['waktu_mulai'])); ?><br>
-                                        <small>
+                                        <small class="text-muted">
                                             <?= date('H:i', strtotime($s['waktu_mulai'])); ?> -
                                             <?= date('H:i', strtotime($s['waktu_selesai'])); ?>
                                         </small>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<?= $s['status'] == 'aktif' ? 'success' : 'secondary' ?>">
+                                        <span class="badge bg-<?= $s['status'] == 'aktif' ? 'success' : 'secondary' ?> rounded-pill px-3 py-2">
                                             <?= ucfirst($s['status']); ?>
                                         </span>
                                     </td>
                                     <td>
-                                        <?= getPesertaCount($koneksi, $s['id']); ?> orang
+                                        <span class="badge bg-primary"><?= getPesertaCount($koneksi, $s['id']); ?></span>
+                                        <small>orang</small>
                                     </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info"
-                                            onclick="tampilkanQR('<?= $s['kode_unik'] ?>', '<?= addslashes($s['judul_rapat']) ?>', '<?= $s['waktu_selesai'] ?>')"
-                                            data-bs-toggle="modal" data-bs-target="#qrModal">
+                                    <td class="text-nowrap">
+                                        <button class="btn btn-sm btn-info me-1"
+                                            onclick="tampilkanQR('<?= addslashes($s['kode_unik']) ?>', '<?= addslashes($s['judul_rapat']) ?>', '<?= $s['waktu_selesai'] ?>')"
+                                            data-bs-toggle="modal" data-bs-target="#qrModal" title="Tampilkan QR">
                                             <i class="fas fa-qrcode"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-warning" onclick="loadPeserta(<?= $s['id'] ?>)"
-                                            data-bs-toggle="modal" data-bs-target="#lihatPesertaModal">
+                                        <button class="btn btn-sm btn-warning me-1" onclick="loadPeserta(<?= $s['id'] ?>)"
+                                            data-bs-toggle="modal" data-bs-target="#lihatPesertaModal" title="Lihat Peserta">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <?php if ($s['status'] == 'aktif'): ?>
-                                            <button class="btn btn-sm btn-danger" onclick="selesaiSesi(<?= $s['id'] ?>)">
+                                            <button class="btn btn-sm btn-danger" onclick="selesaiSesi(<?= $s['id'] ?>)" title="Akhiri Sesi">
                                                 <i class="fas fa-stop"></i>
                                             </button>
                                         <?php endif; ?>
@@ -140,25 +130,34 @@ if ($user_level == 2 && $koneksi) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">QR Code</h5>
+                <h5 class="modal-title">QR Code Absensi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body text-center">
-                <h5 id="qrJudul"></h5>
+                <h5 id="qrJudul" class="mb-3"></h5>
                 <div id="qrCanvas" class="d-flex justify-content-center my-3"></div>
-                <p class="mt-3">Sesi berakhir dalam: <strong id="countdownTimer"></strong></p>
+                <p class="mt-2">
+                    <i class="far fa-clock me-1"></i>
+                    <span id="countdownTimer">Memuat...</span>
+                </p>
             </div>
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="lihatPesertaModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Daftar Hadir</h5><button type="button" class="btn-close"
-                    data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">Daftar Peserta Hadir</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="pesertaList">Loading...</div>
+            <div class="modal-body" id="pesertaList">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="mt-2 text-muted">Memuat data peserta...</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -167,174 +166,146 @@ if ($user_level == 2 && $koneksi) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-    // Definisikan BASE_URL JS secara manual jika window.BASE_URL belum ada
-    // Path ini naik 3 level dari View/Admin ke Root
     const BASE_URL_API = "../../../Function/AbsensiFunction.php";
+    let countdownInterval;
 
-    let countdownInterval; // Variabel global untuk menyimpan interval hitungan mundur
-
-    // PERUBAHAN 3: Update fungsi tampilkanQR untuk menerima waktu_selesai
     function tampilkanQR(kode, judul, waktuSelesai) {
         document.getElementById('qrJudul').innerText = judul;
         const container = document.getElementById('qrCanvas');
         container.innerHTML = "";
         new QRCode(container, {
             text: JSON.stringify({ type: "ABSENSI_ORMAWA", kode: kode }),
-            width: 200, height: 200
+            width: 220, height: 220
         });
 
-        // Hentikan interval sebelumnya jika ada
         clearInterval(countdownInterval);
-
-        // Mulai hitungan mundur hanya jika statusnya 'aktif' (berakhir dalam waktuSelesai)
-        // Di sini kita berasumsi hanya sesi 'aktif' yang bisa menampilkan countdown, 
-        // meskipun tombol QR tampil untuk semua status
-        if (waktuSelesai) {
-            // Mulai hitungan mundur
+        if (waktuSelesai && waktuSelesai !== '0000-00-00 00:00:00') {
             startCountdown(waktuSelesai);
         } else {
-            document.getElementById('countdownTimer').innerText = 'Tidak Tersedia';
+            document.getElementById('countdownTimer').innerText = 'Waktu tidak tersedia';
         }
     }
 
-    // FUNGSI BARU: Untuk memulai hitungan mundur
     function startCountdown(endTimeString) {
-        // Ubah string waktu selesai menjadi objek Date (dalam milidetik)
         const endTime = new Date(endTimeString).getTime();
-        const timerElement = document.getElementById('countdownTimer');
-
-        // Update setiap 1 detik
-        countdownInterval = setInterval(function () {
+        const el = document.getElementById('countdownTimer');
+        countdownInterval = setInterval(() => {
             const now = new Date().getTime();
-            const distance = endTime - now;
-
-            // Perhitungan waktu untuk hari, jam, menit, dan detik
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            // Tampilkan hasilnya
-            let countdownText = "";
-            if (days > 0) countdownText += days + "h ";
-            if (hours > 0 || days > 0) countdownText += hours.toString().padStart(2, '0') + "j ";
-            countdownText += minutes.toString().padStart(2, '0') + "m ";
-            countdownText += seconds.toString().padStart(2, '0') + "d";
-
-            timerElement.innerHTML = countdownText;
-
-            // Jika hitungan mundur selesai
-            if (distance < 0) {
+            const diff = endTime - now;
+            if (diff < 0) {
                 clearInterval(countdownInterval);
-                timerElement.innerHTML = "Waktu Habis!";
+                el.innerHTML = '<span class="text-danger">Waktu Habis!</span>';
+                return;
             }
-        }, 1000); // 1000ms = 1 detik
+            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            el.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }, 1000);
     }
 
-    // FUNGSI BARU: Tambahkan event listener untuk menghapus interval saat modal ditutup
-    document.getElementById('qrModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('qrModal')?.addEventListener('hidden.bs.modal', () => {
         clearInterval(countdownInterval);
     });
 
-
     function selesaiSesi(id) {
-        if (!confirm("Akhiri sesi ini?")) return;
-
-        fetch(BASE_URL_API + "?action=selesai&id=" + id)
-            .then(r => r.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) location.reload();
-            })
-            .catch(e => alert("Error: " + e));
+        Swal.fire({
+            title: 'Akhiri Sesi Absensi?',
+            html: `Apakah Anda yakin ingin mengakhiri sesi ini?<br>
+               <small class="text-muted">Peserta tidak dapat absen lagi setelah sesi dihentikan.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-stop me-1"></i> Ya, Hentikan!',
+            cancelButtonText: '<i class="fas fa-times me-1"></i> Batal',
+            reverseButtons: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`${BASE_URL_API}?action=selesai&id=${id}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.fire({
+                        icon: data.success ? 'success' : 'error',
+                        title: data.success ? 'Sesi Dihentikan!' : 'Gagal',
+                        text: data.message,
+                        timer: data.success ? 2000 : null,
+                        showConfirmButton: !data.success
+                    }).then(() => {
+                        if (data.success) location.reload();
+                    });
+                })
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Koneksi Gagal',
+                        text: 'Tidak dapat terhubung ke server.'
+                    });
+                });
+            }
+        });
     }
 
     function loadPeserta(id) {
-        const container = document.getElementById('pesertaList');
-        container.innerHTML = '<div class="text-center"><div class="spinner-border text-primary"></div><p class="mt-2">Memuat data peserta...</p></div>';
-
-        fetch(BASE_URL_API + "?action=get_peserta&kehadiran_id=" + id)
+        const el = document.getElementById('pesertaList');
+        el.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2">Memuat...</p></div>';
+        
+        fetch(`${BASE_URL_API}?action=get_peserta&kehadiran_id=${id}`)
             .then(r => r.json())
             .then(data => {
-                console.log('Response data:', data); // ✅ Debug: lihat struktur data
-
-                if (!data.success) {
-                    container.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                if (!data.success || !data.peserta?.length) {
+                    el.innerHTML = `<div class="alert alert-warning text-center py-4">
+                        <i class="fas fa-users fa-2x mb-2"></i><br>
+                        Belum ada peserta yang hadir.
+                    </div>`;
                     return;
                 }
-
-                if (!data.peserta || data.peserta.length === 0) {
-                    container.innerHTML = `
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-users fa-2x mb-2"></i>
-                    <p class="mb-0">Belum ada peserta yang absen.</p>
-                </div>`;
-                    return;
-                }
-
-                let html = "<ul class='list-group'>";
-                data.peserta.forEach((p, index) => {
-                    // ✅ Pengecekan field dengan fallback
-                    const nama = p.nama || p.full_name || p.user_nama || 'Nama tidak tersedia';
-                    const waktuAbsen = p.waktu_absen || p.created_at || p.timestamp || 'Waktu tidak tersedia';
-                    const status = p.status || 'Hadir';
-
-                    console.log(`Peserta ${index + 1}:`, p); // ✅ Debug: lihat setiap peserta
-
-                    html += `
-                <li class='list-group-item d-flex justify-content-between align-items-center'>
-                    <div>
-                        <strong>${nama}</strong>
-                        ${p.nim ? `<br><small class="text-muted">NIM: ${p.nim}</small>` : ''}
-                    </div>
-                    <div class="text-end">
-                        <span class='badge bg-success mb-1'>${status}</span><br>
-                        <small class="text-muted">
-                            <i class="far fa-clock"></i> ${formatWaktu(waktuAbsen)}
-                        </small>
-                    </div>
-                </li>`;
-                });
-                html += "</ul>";
-
-                // ✅ Tampilkan jumlah peserta
-                html = `<div class="alert alert-info mb-3">
+                
+                let html = `<div class="alert alert-info mb-3">
                     <i class="fas fa-info-circle"></i> 
-                    Total peserta yang sudah absen: <strong>${data.peserta.length}</strong>
-                </div>` + html;
-
-                container.innerHTML = html;
+                    Total peserta: <strong>${data.peserta.length}</strong> orang
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Nama</th>
+                                <th>Waktu Absen</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                data.peserta.forEach((p, i) => {
+                    const nama = p.full_name || '—';
+                    const waktu = p.waktu_absen 
+                        ? new Date(p.waktu_absen).toLocaleString('id-ID', { hour12: false })
+                        : '—';
+                    const status = p.status_kehadiran || 'Hadir';
+                    const badgeClass = status === 'Terlambat' ? 'bg-warning text-dark' : 'bg-success';
+                    
+                    html += `<tr>
+                        <td>${i + 1}</td>
+                        <td><strong>${nama}</strong></td>
+                        <td><small><i class="far fa-clock"></i> ${waktu}</small></td>
+                        <td><span class="badge ${badgeClass}">${status}</span></td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                el.innerHTML = html;
             })
-            .catch(e => {
-                console.error('Error loading peserta:', e);
-                container.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i> 
-                Error: Gagal memuat data peserta. ${e.message}
-            </div>`;
+            .catch(err => {
+                console.error('Error:', err);
+                el.innerHTML = `<div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Gagal memuat data peserta.
+                </div>`;
             });
-    }
-
-    // ✅ Fungsi helper untuk format waktu
-    function formatWaktu(waktu) {
-        if (!waktu || waktu === 'Waktu tidak tersedia') return waktu;
-
-        try {
-            // Jika format: 2024-12-02 14:30:25
-            const date = new Date(waktu);
-            if (isNaN(date.getTime())) return waktu; // Jika gagal parse, return as is
-
-            const options = {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            };
-            return date.toLocaleString('id-ID', options);
-        } catch (e) {
-            return waktu; // Return original jika error
-        }
     }
 </script>

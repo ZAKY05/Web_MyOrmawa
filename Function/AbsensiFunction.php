@@ -41,7 +41,6 @@ try {
 
     // --- GET BANK LOKASI ---
     if ($action === 'get_bank') {
-        // 🔑 Tentukan ormawa_id untuk bank lokasi
         $ormawa_id = null;
         if ($user_level === 2) {
             $ormawa_id = $session_ormawa_id;
@@ -75,7 +74,6 @@ try {
 
     // --- BUAT SESI ---
     if ($action === 'buat') {
-        // 🔑 Tentukan ormawa_id
         $ormawa_id = null;
         if ($user_level === 2) {
             $ormawa_id = $session_ormawa_id;
@@ -89,7 +87,6 @@ try {
             }
         }
 
-        // ✅ Validasi ORMawa ID eksis
         $checkStmt = mysqli_prepare($koneksi, "SELECT 1 FROM ormawa WHERE id = ?");
         if (!$checkStmt) throw new Exception("Gagal mempersiapkan query validasi ORMawa.");
         mysqli_stmt_bind_param($checkStmt, "i", $ormawa_id);
@@ -171,7 +168,6 @@ try {
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) throw new Exception("ID tidak valid.");
 
-        // ✅ Ambil ormawa_id dari database berdasarkan id sesi
         $getOrmawa = mysqli_prepare($koneksi, "SELECT ormawa_id FROM kehadiran WHERE id = ?");
         if (!$getOrmawa) throw new Exception("Query gagal.");
         mysqli_stmt_bind_param($getOrmawa, "i", $id);
@@ -186,12 +182,10 @@ try {
 
         $sesi_ormawa_id = (int)$row['ormawa_id'];
 
-        // ✅ Validasi akses: Admin hanya bisa selesaikan sesi ormawa-nya sendiri
         if ($user_level === 2 && $sesi_ormawa_id !== $session_ormawa_id) {
             throw new Exception("Anda tidak memiliki akses ke sesi ini.");
         }
 
-        // ✅ Update status
         $stmt = mysqli_prepare($koneksi, "UPDATE kehadiran SET status = 'selesai' WHERE id = ?");
         if (!$stmt) throw new Exception("Query update gagal.");
         mysqli_stmt_bind_param($stmt, "i", $id);
@@ -211,34 +205,40 @@ try {
         $id = (int)($_GET['kehadiran_id'] ?? 0);
         if ($id <= 0) throw new Exception("ID sesi tidak valid.");
 
-        // ✅ Ambil ormawa_id dari database berdasarkan kehadiran_id
-        $getOrmawa = mysqli_prepare($koneksi, "SELECT ormawa_id FROM kehadiran WHERE id = ?");
-        if (!$getOrmawa) throw new Exception("Query gagal.");
-        mysqli_stmt_bind_param($getOrmawa, "i", $id);
-        mysqli_stmt_execute($getOrmawa);
-        $result = mysqli_stmt_get_result($getOrmawa);
-        $row = mysqli_fetch_assoc($result);
-        mysqli_stmt_close($getOrmawa);
+        // ✅ Ambil data sesi (waktu_mulai untuk cek terlambat)
+        $getSession = mysqli_prepare($koneksi, "SELECT ormawa_id, waktu_mulai FROM kehadiran WHERE id = ?");
+        if (!$getSession) throw new Exception("Query gagal.");
+        mysqli_stmt_bind_param($getSession, "i", $id);
+        mysqli_stmt_execute($getSession);
+        $result = mysqli_stmt_get_result($getSession);
+        $session = mysqli_fetch_assoc($result);
+        mysqli_stmt_close($getSession);
 
-        if (!$row) {
+        if (!$session) {
             throw new Exception("Sesi tidak ditemukan.");
         }
 
-        $sesi_ormawa_id = (int)$row['ormawa_id'];
+        $sesi_ormawa_id = (int)$session['ormawa_id'];
+        $waktu_mulai = $session['waktu_mulai'];
 
-        // ✅ Validasi akses: Admin hanya bisa lihat peserta sesi ormawa-nya sendiri
         if ($user_level === 2 && $sesi_ormawa_id !== $session_ormawa_id) {
             throw new Exception("Anda tidak memiliki akses ke sesi ini.");
         }
 
-        $query = "SELECT u.full_name, al.waktu_absen, al.tipe_absen 
+        // ✅ Query peserta dengan status terlambat
+        $query = "SELECT u.full_name, al.waktu_absen, al.tipe_absen,
+                  CASE 
+                      WHEN al.waktu_absen > ? THEN 'Terlambat'
+                      ELSE 'Hadir'
+                  END AS status_kehadiran
                   FROM absensi_log al
                   JOIN user u ON al.user_id = u.id
                   WHERE al.kehadiran_id = ?
-                  ORDER BY al.waktu_absen DESC";
+                  ORDER BY al.waktu_absen ASC";
+        
         $stmt = mysqli_prepare($koneksi, $query);
         if (!$stmt) throw new Exception("Gagal query peserta.");
-        mysqli_stmt_bind_param($stmt, "i", $id);
+        mysqli_stmt_bind_param($stmt, "si", $waktu_mulai, $id);
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
         if (!$res) {
