@@ -1,5 +1,5 @@
 <?php
-include_once(__DIR__ . '/Header.php'); 
+include_once(__DIR__ . '/Header.php');
 include_once(__DIR__ . '/../FormData/TambahLokasi.php');
 
 $path_koneksi = __DIR__ . '/../../../Config/ConnectDB.php';
@@ -9,21 +9,16 @@ if (file_exists($path_koneksi)) {
     die("Error: File koneksi tidak ditemukan di $path_koneksi");
 }
 
-$user_level = $_SESSION['user_level'] ?? 0;
-$ormawa_id = $_SESSION['ormawa_id'] ?? 0;
+$user_level = (int)($_SESSION['user_level'] ?? 0);
+$ormawa_id = (int)($_SESSION['ormawa_id'] ?? 0);
 
-// ✅ Izinkan level 1 (SuperAdmin) & level 2 (Admin ORMAWA)
-if ($user_level != 1 && $user_level != 2) {
+if ($user_level !== 1 && $user_level !== 2) {
     die("Akses ditolak. Hanya SuperAdmin atau Admin ORMAWA yang bisa mengakses halaman ini.");
 }
 
 $locations = [];
-
 if ($koneksi) {
-    // 🔑 Query sesuai role:
-    // - SuperAdmin: tampilkan SEMUA lokasi (opsional bisa dibatasi per ormawa terpilih)
-    // - Admin: hanya milik ormawanya
-    $query = $user_level === 1 
+    $query = $user_level === 1
         ? "SELECT l.*, o.nama_ormawa FROM lokasi_absen l JOIN ormawa o ON l.ormawa_id = o.id ORDER BY o.nama_ormawa, l.nama_lokasi"
         : "SELECT * FROM lokasi_absen WHERE ormawa_id = ? ORDER BY nama_lokasi ASC";
 
@@ -45,9 +40,8 @@ if ($koneksi) {
         <h1 class="h3 mb-0 text-gray-800">
             <?= $user_level === 1 ? 'Bank Lokasi (Semua ORMAWA)' : 'Lokasi Absensi'; ?>
         </h1>
-        <button type="button" class="btn btn-primary btn-icon-split" 
-                data-bs-toggle="modal" data-bs-target="#lokasiModal" 
-                onclick="prepareAdd()">
+        <button type="button" class="btn btn-primary btn-icon-split" data-bs-toggle="modal"
+            data-bs-target="#lokasiModal" onclick="prepareAdd()">
             <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
             <span class="text">Tambah Lokasi</span>
         </button>
@@ -82,34 +76,38 @@ if ($koneksi) {
                         </thead>
                         <tbody>
                             <?php $no = 1; foreach ($locations as $loc): ?>
-                            <tr>
-                                <td><?= $no++; ?></td>
-                                <?php if ($user_level === 1): ?>
-                                    <td><?= htmlspecialchars($loc['nama_ormawa']); ?></td>
-                                <?php endif; ?>
-                                <td><?= htmlspecialchars($loc['nama_lokasi']); ?></td>
-                                <td><code><?= number_format((float)$loc['lat'], 6); ?>, <?= number_format((float)$loc['lng'], 6); ?></code></td>
-                                <td><?= (int)$loc['radius_default']; ?></td>
-                                <td>
-                                    <button class="btn btn-warning btn-circle btn-sm edit-btn" 
+                                <tr>
+                                    <td><?= $no++; ?></td>
+                                    <?php if ($user_level === 1): ?>
+                                        <td><?= htmlspecialchars($loc['nama_ormawa']); ?></td>
+                                    <?php endif; ?>
+                                    <td><?= htmlspecialchars($loc['nama_lokasi']); ?></td>
+                                    <td>
+                                        <code><?= number_format((float)$loc['lat'], 6); ?>, <?= number_format((float)$loc['lng'], 6); ?></code>
+                                    </td>
+                                    <td><?= (int)$loc['radius_default']; ?></td>
+                                    <td>
+                                        <button class="btn btn-warning btn-circle btn-sm edit-btn"
                                             data-id="<?= (int)$loc['id']; ?>"
                                             data-nama="<?= htmlspecialchars($loc['nama_lokasi']); ?>"
                                             data-lat="<?= $loc['lat']; ?>"
                                             data-lng="<?= $loc['lng']; ?>"
                                             data-radius="<?= (int)$loc['radius_default']; ?>"
                                             data-ormawa-id="<?= (int)$loc['ormawa_id']; ?>"
-                                            data-bs-toggle="modal" 
+                                            data-bs-toggle="modal"
                                             data-bs-target="#lokasiModal"
                                             title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-danger btn-circle btn-sm delete-btn" 
-                                            data-id="<?= (int)$loc['id']; ?>" 
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <!-- ✅ Sudah ada data-ormawa-id -->
+                                        <button class="btn btn-danger btn-circle btn-sm delete-btn"
+                                            data-id="<?= (int)$loc['id']; ?>"
+                                            data-ormawa-id="<?= (int)$loc['ormawa_id']; ?>"
                                             title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
@@ -131,13 +129,13 @@ function prepareAdd() {
     document.getElementById('formLokasi').reset();
     document.getElementById('lokasiModalTitle').innerText = 'Tambah Lokasi';
     document.getElementById('lokasi_id').value = '';
-    // Reset select Ormawa (jika SuperAdmin)
     const select = document.getElementById('ormawaSelect');
     if (select) select.value = '';
 }
 
+// ✅ Hanya satu DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
-    // ✅ Edit: ambil ormawa_id saat edit (untuk SuperAdmin)
+    // --- Edit Button ---
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
@@ -145,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const lat = this.getAttribute('data-lat');
             const lng = this.getAttribute('data-lng');
             const radius = this.getAttribute('data-radius');
-            const ormawaId = this.getAttribute('data-ormawa-id'); // ✅ Tambahkan ini
+            const ormawaId = this.getAttribute('data-ormawa-id');
 
             document.getElementById('lokasiModalTitle').innerText = 'Edit Lokasi';
             document.getElementById('lokasi_id').value = id;
@@ -154,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('lng').value = lng;
             document.getElementById('radius_default').value = radius;
 
-            // Set ormawa_id di form (hidden/select)
             const ormawaInput = document.querySelector('input[name="ormawa_id"]');
             const ormawaSelect = document.getElementById('ormawaSelect');
             if (ormawaInput) ormawaInput.value = ormawaId;
@@ -162,9 +159,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- Delete Button ---
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
+            const ormawaId = this.getAttribute('data-ormawa-id');
+
+            if (!ormawaId || ormawaId <= 0) {
+                Swal.fire('Error!', 'ORMAWA tidak ditemukan untuk lokasi ini.', 'error');
+                return;
+            }
+
             Swal.fire({
                 title: 'Yakin hapus lokasi?',
                 text: "Lokasi ini akan dihapus permanen dari bank lokasi.",
@@ -176,7 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelButtonText: 'Batal'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch(`${LOCATION_API}?action=delete&id=${id}`)
+                    // ✅ Kirim ormawa_id via GET
+                    fetch(`${LOCATION_API}?action=delete&id=${id}&ormawa_id=${ormawaId}`)
                     .then(r => r.json())
                     .then(data => {
                         if (data.success) {
@@ -191,7 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             Swal.fire('Gagal!', data.message || 'Tidak dapat menghapus lokasi.', 'error');
                         }
                     })
-                    .catch(() => Swal.fire('Error!', 'Gagal terhubung ke server.', 'error'));
+                    .catch(() => {
+                        Swal.fire('Error!', 'Gagal terhubung ke server.', 'error');
+                    });
                 }
             });
         });
