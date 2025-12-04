@@ -78,6 +78,23 @@
                         </div>
                     </div>
 
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="waktu_mulai">Waktu Mulai <span class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="waktu_mulai" name="waktu_mulai" required>
+                                <small class="form-text text-muted">Contoh: 07:00 (Format 24 jam)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="waktu_selesai">Waktu Selesai <span class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="waktu_selesai" name="waktu_selesai" required>
+                                <small class="form-text text-muted">Contoh: 17:00 (Format 24 jam)</small>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label for="lokasi">Lokasi <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="lokasi" name="lokasi" placeholder="Contoh: Aula Gedung JTI" required>

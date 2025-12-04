@@ -1,98 +1,86 @@
-<!-- Modal Tambah/Edit Kompetisi -->
-<div class="modal fade" id="tambahKompetisiModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- Modal Tambah Kompetisi -->
+<div class="modal fade" id="tambahKompetisiModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalLabel">Tambah Kompetisi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="exampleModalLabel">Tambah Kompetisi Baru</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-            <form id="formKompetisi" action="../../../Function/KompetisiFunction.php" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" id="form_action" value="add">
-                <input type="hidden" name="id" id="kompetisi_id">
-
+            <form method="POST" action="" enctype="multipart/form-data">
                 <div class="modal-body">
+                    <input type="hidden" name="action" value="tambah">
+
                     <?php
-                    // ✅ Tentukan level user dari session
-                    $user_level = (int)($_SESSION['user_level'] ?? 0);
+                    $admin_ormawa_info = getAdminOrmawaInfoKompetisi($koneksi);
+                    $is_admin_organisasi = (isset($_SESSION['user_level']) && $_SESSION['user_level'] === 2);
                     ?>
 
-                    <?php if ($user_level === 1): ?>
-                        <!-- SuperAdmin: Harus pilih Ormawa -->
-                        <div class="mb-3">
-                            <label class="form-label">Ormawa<span class="text-danger">*</span></label>
-                            <select class="form-control" name="id_ormawa" required>
+                    <?php if ($is_admin_organisasi && $admin_ormawa_info): ?>
+                        <input type="hidden" name="id_ormawa" value="<?php echo (int)$admin_ormawa_info['id']; ?>">
+                        <div class="form-group">
+                            <label>Ormawa Penyelenggara</label>
+                            <input type="text" class="form-control" value="<?php echo htmlspecialchars($admin_ormawa_info['nama_ormawa']); ?>" readonly>
+                        </div>
+                    <?php else: ?>
+                        <div class="form-group">
+                            <label for="id_ormawa">Ormawa Penyelenggara <span class="text-danger">*</span></label>
+                            <select class="form-control" id="id_ormawa" name="id_ormawa" required>
                                 <option value="">Pilih Ormawa</option>
-                                <?php
-                                // Ambil semua Ormawa
-                                $ormawa_list = mysqli_query($koneksi, "SELECT id, nama_ormawa FROM ormawa ORDER BY nama_ormawa");
-                                while ($o = mysqli_fetch_assoc($ormawa_list)):
-                                ?>
-                                    <option value="<?= (int)$o['id']; ?>">
-                                        <?= htmlspecialchars($o['nama_ormawa']); ?>
+                                <?php foreach ($all_ormawa_list as $ormawa): ?>
+                                    <option value="<?php echo (int)$ormawa['id']; ?>">
+                                        <?php echo htmlspecialchars($ormawa['nama_ormawa']); ?>
                                     </option>
-                                <?php endwhile; ?>
+                                <?php endforeach; ?>
                             </select>
                         </div>
-
-                    <?php elseif ($user_level === 2): ?>
-                        <!-- Admin Organisasi: Otomatis dari session -->
-                        <?php
-                        $ormawa_id = (int)($_SESSION['ormawa_id'] ?? 0);
-                        $ormawa_nama = htmlspecialchars($_SESSION['ormawa_nama'] ?? 'Ormawa Anda');
-                        if ($ormawa_id <= 0):
-                            echo '<div class="alert alert-danger">Error: Anda tidak terdaftar di ORMawa manapun.</div>';
-                        endif;
-                        ?>
-                        <input type="hidden" name="id_ormawa" value="<?= $ormawa_id; ?>">
-                        <div class="mb-3">
-                            <label class="form-label">Ormawa</label>
-                            <input type="text" class="form-control" value="<?= $ormawa_nama; ?>" readonly>
-                        </div>
-
-                    <?php else: ?>
-                        <!-- Fallback: tidak valid -->
-                        <div class="alert alert-danger">
-                            Anda tidak memiliki izin untuk menambah kompetisi.
-                        </div>
-                        <script>document.querySelector('#formKompetisi button[type="submit"]').disabled = true;</script>
                     <?php endif; ?>
 
-                    <div class="mb-3">
-                        <label class="form-label">Nama Kompetisi <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="nama_kompetisi" id="nama_kompetisi" required>
+                    <div class="form-group">
+                        <label for="nama_kompetisi">Nama Kompetisi <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nama_kompetisi" name="nama_kompetisi" placeholder="Contoh: BRI Hackathon 2026" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Penyelenggara <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="penyelenggara" id="penyelenggara" required>
+
+                    <div class="form-group">
+                        <label for="penyelenggara">Penyelenggara <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="penyelenggara" name="penyelenggara" placeholder="Contoh: Bank Rakyat Indonesia (BRI)" required>
                     </div>
+
+                    <div class="form-group">
+                        <label for="deskripsi">Deskripsi <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3" placeholder="Jelaskan tentang kompetisi ini..." required></textarea>
+                    </div>
+
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Periode (Opsional)</label>
-                            <input type="text" class="form-control" name="periode" id="periode">
-                            <small class="form-text text-muted">Contoh: 15-20 November 2025</small>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="tgl_mulai">Tanggal Mulai <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="tgl_mulai" name="tgl_mulai" required>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Deadline (Opsional)</label>
-                            <input type="date" class="form-control" name="deadline" id="deadline">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="tgl_selesai">Tanggal Selesai <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="tgl_selesai" name="tgl_selesai" required>
+                            </div>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
-                        <textarea class="form-control" name="deskripsi" id="deskripsi" rows="3" required></textarea>
+
+                    <div class="form-group">
+                        <label for="gambar">Gambar Poster Kompetisi (Rasio 3:4)</label>
+                        <input type="file" class="form-control-file" id="gambar" name="gambar" accept="image/*">
+                        <small class="form-text text-muted">Format: JPG/PNG. Maksimal: 2MB. Rekomendasi: 600x800px</small>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Gambar (Opsional)</label>
-                        <input type="file" class="form-control" name="gambar" accept="image/*">
-                        <small class="form-text text-muted">Format: JPG, PNG (≤2MB)</small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Buku Panduan (Opsional)</label>
-                        <input type="file" class="form-control" name="file_panduan" accept=".pdf,.doc,.docx">
-                        <small class="form-text text-muted">Format: PDF, DOC (≤10MB)</small>
+
+                    <div class="form-group">
+                        <label for="file_panduan">Buku Panduan (PDF)</label>
+                        <input type="file" class="form-control-file" id="file_panduan" name="file_panduan" accept=".pdf,.doc,.docx">
+                        <small class="form-text text-muted">Format: PDF Maksimal: 10MB.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </form>

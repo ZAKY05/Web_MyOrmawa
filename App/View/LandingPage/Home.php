@@ -1,745 +1,412 @@
 <?php
+
 include('../SuperAdmin/Header.php');
 include('../../../Config/ConnectDB.php');
-
-// Fungsi-fungsi statistik
-function getTotalEvents($koneksi) {
-    $query = "SELECT COUNT(*) AS total FROM event";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
-
-function getTotalUsers($koneksi, $level = null) {
-    $query = "SELECT COUNT(*) AS total FROM user";
-    if ($level !== null) {
-        $query .= " WHERE level = '$level'";
-    }
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
-
-function getTotalSubmissions($koneksi) {
-    $query = "SELECT COUNT(*) AS total FROM submit";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
-
-function getOrmawaByCategory($koneksi) {
-    $query = "SELECT kategori, COUNT(*) as jumlah FROM ormawa GROUP BY kategori";
-    $result = mysqli_query($koneksi, $query);
+function getOrmawaData($koneksi) {
+    $sql = "SELECT id, nama_ormawa, deskripsi, logo, kategori, visi, misi, email, contact_person FROM ormawa ORDER BY nama_ormawa ASC";
+    $result = mysqli_query($koneksi, $sql);
     $data = [];
-    while($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
+    if ($result) {
+        while($row = mysqli_fetch_assoc($result)) {
+            $data[] = $row;
+        }
+        
+        mysqli_free_result($result);
+    } else {
+        echo "Error: " . mysqli_error($koneksi);
     }
     return $data;
 }
+function getKegiatanTerbaru($koneksi, $jumlah = 6) {
 
-function getRecentEvents($koneksi, $limit = 5) {
-    $query = "SELECT e.nama_event, e.tgl_mulai, e.tgl_selesai, o.nama_ormawa FROM event e JOIN ormawa o ON e.ormawa_id = o.id ORDER BY e.id DESC LIMIT $limit";
-    $result = mysqli_query($koneksi, $query);
+    $sql = "SELECT e.id, e.nama_event, e.deskripsi, e.tgl_mulai, e.tgl_selesai, e.lokasi, e.gambar, o.nama_ormawa
+            FROM event e
+            JOIN ormawa o ON e.ormawa_id = o.id
+            ORDER BY e.tgl_mulai DESC
+            LIMIT ?";
+    $stmt = mysqli_prepare($koneksi, $sql);
+    mysqli_stmt_bind_param($stmt, "i", $jumlah);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
     $data = [];
-    while($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
+    if ($result) {
+        while($row = mysqli_fetch_assoc($result)) {
+            $data[] = $row;
+        }
+        mysqli_free_result($result);
+    } else {
+        echo "Error fetching events: " . mysqli_error($koneksi);
     }
+    mysqli_stmt_close($stmt);
     return $data;
 }
 
-function getTotalForms($koneksi) {
-    $query = "SELECT COUNT(*) AS total FROM form_info";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
+$ormawa_list = getOrmawaData($koneksi);
+$kegiatan_list = getKegiatanTerbaru($koneksi, 6); // Ambil 6 kegiatan terbaru
+$logo_dir = '../uploads/logos/'; // Path dari Home.php ke folder uploads/logos
 
-function getTotalDocuments($koneksi) {
-    $query = "SELECT COUNT(*) AS total FROM dokumen";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
+// Fungsi untuk membagi array menjadi chunk 3 (untuk slider ormawa)
+function array_chunk_3($array) {
+    return array_chunk($array, 3, true);
 }
-
-function getActiveEvents($koneksi) {
-    $query = "SELECT COUNT(*) AS total FROM event WHERE tgl_mulai <= CURDATE() AND tgl_selesai >= CURDATE()";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
-
-function getUpcomingEvents($koneksi, $days = 7) {
-    $query = "SELECT COUNT(*) AS total FROM event WHERE tgl_mulai BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL $days DAY)";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
-
-function getEventTrend($koneksi) {
-    $query = "SELECT DATE_FORMAT(tgl_mulai, '%Y-%m') as bulan, COUNT(*) as jumlah FROM event GROUP BY bulan ORDER BY bulan";
-    $result = mysqli_query($koneksi, $query);
-    $data = [];
-    while($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
-    }
-    return $data;
-}
-
-function getUserDistribution($koneksi) {
-    $query = "SELECT level, COUNT(*) as jumlah FROM user GROUP BY level";
-    $result = mysqli_query($koneksi, $query);
-    $data = [];
-    while($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
-    }
-    return $data;
-}
-
-function getTotalOrmawa($koneksi) {
-    $query = "SELECT COUNT(*) AS total FROM ormawa";
-    $result = mysqli_query($koneksi, $query);
-    $data = mysqli_fetch_assoc($result);
-    return $data['total'];
-}
+$ormawa_chunks = array_chunk_3($ormawa_list);
 ?>
 
-<div class="container-fluid">
-                    <!-- Page Heading -->
-                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-                        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i
-                                class="fas fa-download fa-sm text-white-50"></i> Generate Report</a>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ormawa Kampus - Organisasi Mahasiswa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css  " rel="stylesheet">
+    <link rel="stylesheet" href="../../../Asset/Css/LandingPage.css">
+    <link rel="stylesheet" href="../../../Asset/Css/Modal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css  ">
+
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
+            <a class="navbar-brand text-gradient" href="#home">
+                <img src="../../../Asset/Img/Apps Desktop.svg" class="img-landing" alt="Logo"> MyOrmawa
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#home">Beranda</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#kegiatan">Kegiatan</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#struktur">Ormawa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#kontak">Kontak</a>
+                    </li>
+                    <a href="../SuperAdmin/Login.php"><button class="btn btn-primary">Login</button></a>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <section id="home" class="hero-slider">
+        <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1920');">
+            <div class="slide-overlay">
+                <div class="container">
+                    <div class="slide-content">
+                        <span class="slide-category">BERITA UTAMA</span>
+                        <h1 class="slide-title">Pemilihan Ketua Ormawa 2025</h1>
+                        <p class="slide-description">Proses demokrasi pemilihan ketua organisasi mahasiswa berjalan lancar dengan partisipasi aktif seluruh anggota.</p>
+                        <button class="btn btn-light btn-lg">Baca Selengkapnya</button>
                     </div>
-                    <!-- Content Row -->
-                    <div class="row">
+                </div>
+            </div>
+        </div>
 
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-primary shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                Total Ormawa</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getTotalOrmawa($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-building fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Earnings (Monthly) Card Example -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-success shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                Total Dokumen</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getTotalDocuments($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-file-pdf fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Earnings (Monthly) Card Example -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-info shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                Event Aktif</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getActiveEvents($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-play-circle fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Pending Requests Card Example -->
-                        <div class="col-xl-3 col-md-6 mb-4">
-                            <div class="card border-left-warning shadow h-100 py-2">
-                                <div class="card-body">
-                                    <div class="row no-gutters align-items-center">
-                                        <div class="col mr-2">
-                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                Event Mendatang</div>
-                                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?php
-                                                echo getUpcomingEvents($koneksi);
-                                            ?></div>
-                                        </div>
-                                        <div class="col-auto">
-                                            <i class="fas fa-clock fa-2x text-gray-300"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    
-
-                    <!-- Content Row -->
-
-                    <div class="row">
-
-                        <!-- Area Chart -->
-                        <div class="col-xl-8 col-lg-7">
-                            <div class="card shadow mb-4">
-                                <!-- Card Header - Dropdown -->
-                                <div
-                                    class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Tren Event per Bulan</h6>
-                                    <div class="dropdown no-arrow">
-                                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                                        </a>
-                                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                                            aria-labelledby="dropdownMenuLink">
-                                            <div class="dropdown-header">Dropdown Header:</div>
-                                            <a class="dropdown-item" href="#">Action</a>
-                                            <a class="dropdown-item" href="#">Another action</a>
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item" href="#">Something else here</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Card Body -->
-                                <div class="card-body">
-                                    <div class="chart-area">
-                                        <canvas id="eventTrendChart"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Pie Chart -->
-                        <div class="col-xl-4 col-lg-5">
-                            <div class="card shadow mb-4">
-                                <!-- Card Header - Dropdown -->
-                                <div
-                                    class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Distribusi User Berdasarkan Level</h6>
-                                    <div class="dropdown no-arrow">
-                                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                                        </a>
-                                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                                            aria-labelledby="dropdownMenuLink">
-                                            <div class="dropdown-header">Dropdown Header:</div>
-                                            <a class="dropdown-item" href="#">Action</a>
-                                            <a class="dropdown-item" href="#">Another action</a>
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item" href="#">Something else here</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Card Body -->
-                                <div class="card-body">
-                                    <div class="chart-pie pt-4 pb-2">
-                                        <canvas id="userDistributionChart"></canvas>
-                                    </div>
-                                    <div class="mt-4 text-center small">
-                                        <?php
-                                        $user_distribution = getUserDistribution($koneksi);
-                                        $level_labels = [
-                                            '1' => 'Super Admin',
-                                            '2' => 'Admin Ormawa',
-                                            '3' => 'Pengurus',
-                                            '4' => 'Mahasiswa'
-                                        ];
-                                        foreach ($user_distribution as $index => $user_data) {
-                                            $level = $user_data['level'];
-                                            $level_name = $level_labels[$level] ?? 'Level ' . $level;
-                                            $colors = ['text-primary', 'text-success', 'text-info', 'text-warning', 'text-danger', 'text-secondary'];
-                                            $color_class = $colors[$index % count($colors)];
-                                            echo '<span class="mr-2"><i class="fas fa-circle ' . $color_class . '"></i> ' . $level_name . '</span>';
-                                        }
-                                        ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <div class="slide" style="background-image: url('  https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=1920');">
+            <div class="slide-overlay">
+                <div class="container">
+                    <div class="slide-content">
+                        <span class="slide-category">PRESTASI</span>
+                        <h1 class="slide-title">Juara Kompetisi Nasional</h1>
+                        <p class="slide-description">Tim ormawa berhasil meraih juara 1 dalam kompetisi debat mahasiswa tingkat nasional di Jakarta.</p>
+                        <button class="btn btn-light btn-lg">Baca Selengkapnya</button>
                     </div>
-                    <!-- Content Row -->
+                </div>
+            </div>
+        </div>
 
-                    <!-- Notifications Row -->
-                    <div class="row">
-                        <!-- Upcoming Events Card -->
-                        <div class="col-xl-12 col-lg-12">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Event Mendatang</h6>
-                                </div>
-                                <div class="card-body">
+        <div class="slide" style="background-image: url('  https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=1920');">
+            <div class="slide-overlay">
+                <div class="container">
+                    <div class="slide-content">
+                        <span class="slide-category">KEGIATAN SOSIAL</span>
+                        <h1 class="slide-title">Bakti Sosial Desa Binaan</h1>
+                        <p class="slide-description">Program pengabdian masyarakat dengan memberikan bantuan pendidikan dan kesehatan di desa binaan kampus.</p>
+                        <button class="btn btn-light btn-lg">Baca Selengkapnya</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slider-arrow prev" onclick="changeSlide(-1)">
+            <i class="bi bi-chevron-left fs-4"></i>
+        </div>
+        <div class="slider-arrow next" onclick="changeSlide(1)">
+            <i class="bi bi-chevron-right fs-4"></i>
+        </div>
+
+        <div class="slider-nav">
+            <span class="slider-dot active" onclick="goToSlide(0)"></span>
+            <span class="slider-dot" onclick="goToSlide(1)"></span>
+            <span class="slider-dot" onclick="goToSlide(2)"></span>
+        </div>
+    </section>
+
+
+
+<!-- SECTION KEGIATAN TERBARU - MODIFIED -->
+<section id="kegiatan">
+    <div class="container">
+        <div class="section-title">
+            <h2><span class="text-gradient">Kegiatan</span> Terbaru</h2>
+            <p>Berbagai kegiatan yang telah dan akan dilaksanakan</p>
+        </div>
+
+        <div class="row g-4">
+            <?php if (!empty($kegiatan_list)): ?>
+                <?php foreach ($kegiatan_list as $kegiatan): ?>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="activity-card">
+                            <?php
+                            $gambar_nama_file = $kegiatan['gambar'];
+                            $gambar_path = '../../../Uploads/event/' . $gambar_nama_file;
+                            $gambar_url = ($gambar_nama_file && file_exists(__DIR__ . '/../../../Uploads/event/' . $gambar_nama_file)) 
+                                ? $gambar_path 
+                                : 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+                            ?>
+                            <div class="activity-img" style="background-image: url('<?php echo htmlspecialchars($gambar_url); ?>');">
+                                <div class="activity-date">
                                     <?php
-                                    // Query untuk mendapatkan event mendatang dalam 7 hari ke depan
-                                    $upcoming_events_query = "SELECT e.nama_event, e.tgl_mulai, e.tgl_selesai, e.deskripsi, o.nama_ormawa
-                                                              FROM event e
-                                                              JOIN ormawa o ON e.ormawa_id = o.id
-                                                              WHERE e.tgl_mulai BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-                                                              ORDER BY e.tgl_mulai ASC";
-                                    $upcoming_events_result = mysqli_query($koneksi, $upcoming_events_query);
-                                    $upcoming_events = [];
-                                    while($row = mysqli_fetch_assoc($upcoming_events_result)) {
-                                        $upcoming_events[] = $row;
-                                    }
+                                    $tgl_mulai_obj = new DateTime($kegiatan['tgl_mulai']);
                                     ?>
-                                    <?php if (!empty($upcoming_events)): ?>
-                                        <div class="list-group">
-                                            <?php foreach ($upcoming_events as $event): ?>
-                                                <a href="Index.php?page=event" class="list-group-item list-group-item-action">
-                                                    <div class="d-flex w-100 justify-content-between">
-                                                        <h6 class="mb-1"><?php echo htmlspecialchars($event['nama_event']); ?></h6>
-                                                        <small><?php echo date('d M', strtotime($event['tgl_mulai'])); ?> - <?php echo date('d M', strtotime($event['tgl_selesai'])); ?></small>
-                                                    </div>
-                                                    <p class="mb-1"><?php echo htmlspecialchars($event['deskripsi']); ?></p>
-                                                    <small>Oleh: <?php echo htmlspecialchars($event['nama_ormawa']); ?></small>
-                                                </a>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="text-center py-3">
-                                            <i class="fas fa-calendar-check fa-3x text-gray-300 mb-3"></i>
-                                            <p class="text-gray-500">Tidak ada event mendatang dalam 7 hari ke depan.</p>
-                                        </div>
-                                    <?php endif; ?>
+                                    <span class="day"><?php echo $tgl_mulai_obj->format('d'); ?></span>
+                                    <span class="month"><?php echo $tgl_mulai_obj->format('M'); ?></span>
                                 </div>
+                            </div>
+                            <div class="activity-content">
+                                <span class="badge bg-primary mb-2"><?php echo htmlspecialchars($kegiatan['nama_ormawa']); ?></span>
+                                <h5 class="mb-2"><?php echo htmlspecialchars($kegiatan['nama_event']); ?></h5>
+                                <p class="text-muted mb-3"><?php echo htmlspecialchars(substr($kegiatan['deskripsi'], 0, 100)) . (strlen($kegiatan['deskripsi']) > 100 ? '...' : ''); ?></p>
+                                
+                                <!-- MODIFIED: Button dengan onclick event -->
+                                <a href="#" class="text-decoration-none" onclick="event.preventDefault(); showEventDetail({
+                                    id: <?php echo $kegiatan['id']; ?>,
+                                    nama_event: '<?php echo addslashes($kegiatan['nama_event']); ?>',
+                                    deskripsi: '<?php echo addslashes($kegiatan['deskripsi']); ?>',
+                                    tgl_mulai: '<?php echo $kegiatan['tgl_mulai']; ?>',
+                                    tgl_selesai: '<?php echo $kegiatan['tgl_selesai']; ?>',
+                                    lokasi: '<?php echo addslashes($kegiatan['lokasi']); ?>',
+                                    gambar: '<?php echo htmlspecialchars($gambar_url); ?>',
+                                    nama_ormawa: '<?php echo addslashes($kegiatan['nama_ormawa']); ?>'
+                                });">
+                                    Lihat Detail <i class="bi bi-arrow-right"></i>
+                                </a>
                             </div>
                         </div>
                     </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-12">
+                    <p class="text-center">Belum ada kegiatan yang diumumkan.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</section>
 
-                    <!-- Quick Access Row -->
-                    <div class="row">
-                        <!-- Quick Access Card -->
-                        <div class="col-xl-12 col-lg-12">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Akses Cepat</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <!-- Ormawa Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-primary shadow h-100 py-2">
-                                                <a href="Index.php?page=ormawa" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                                    Ormawa</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-users fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
+<!-- SECTION DAFTAR ORMAWA - MODIFIED -->
+<section id="struktur" class="structure-section">
+    <div class="container">
+        <div class="section-title">
+            <h2><span class="text-gradient">Daftar</span> Organisasi Mahasiswa</h2>
+            <p>Himpunan Mahasiswa Jurusan di Kampus</p>
+        </div>
 
-                                        <!-- Event Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-success shadow h-100 py-2">
-                                                <a href="Index.php?page=event" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                                    Event</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Account Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-info shadow h-100 py-2">
-                                                <a href="Index.php?page=account" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                                    Akun</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-user fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Form Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-warning shadow h-100 py-2">
-                                                <a href="Index.php?page=oprec" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                                    Form Anggota</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Event Form Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-danger shadow h-100 py-2">
-                                                <a href="Index.php?page=oprec-event" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                                                    Form Event</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-calendar-plus fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-
-                                        <!-- Document Management -->
-                                        <div class="col-xl-2 col-md-4 mb-4">
-                                            <div class="card border-left-secondary shadow h-100 py-2">
-                                                <a href="Index.php?page=doc" class="text-decoration-none">
-                                                    <div class="card-body">
-                                                        <div class="row no-gutters align-items-center">
-                                                            <div class="col mr-2">
-                                                                <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                                                                    Dokumen</div>
-                                                                <div class="h5 mb-0 font-weight-bold text-gray-800">Manajemen</div>
-                                                            </div>
-                                                            <div class="col-auto">
-                                                                <i class="fas fa-file-pdf fa-2x text-gray-300"></i>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
+        <div class="ormawa-slider-container">
+            <div class="ormawa-slider-wrapper" id="ormawaSlider">
+                <?php if (!empty($ormawa_chunks)): ?>
+                    <?php foreach ($ormawa_chunks as $index => $chunk): ?>
+                        <div class="ormawa-slide">
+                            <?php foreach ($chunk as $ormawa): ?>
+                                <div class="ormawa-card">
+                                    <div class="ormawa-logo">
+                                        <?php
+                                        $logo_nama_file = $ormawa['logo'];
+                                        $logo_url = ($logo_nama_file && file_exists(__DIR__ . '/../../../uploads/logos/' . $logo_nama_file)) 
+                                            ? '../../../uploads/logos/' . $logo_nama_file 
+                                            : 'https://via.placeholder.com/150/667eea/ffffff?text=' . substr($ormawa['nama_ormawa'], 0, 2);
+                                        ?>
+                                        <img src="<?php echo $logo_url; ?>" alt="Logo <?php echo htmlspecialchars($ormawa['nama_ormawa']); ?>">
+                                    </div>
+                                    <div class="ormawa-content">
+                                        <h5 class="ormawa-title"><?php echo htmlspecialchars($ormawa['nama_ormawa']); ?></h5>
+                                        <?php
+                                        // Add the dynamically generated logo_url to the ormawa data array
+                                        $ormawa['logo'] = $logo_url;
+                                        // Encode the whole ormawa data object as a JSON string for JavaScript
+                                        $ormawa_json = htmlspecialchars(json_encode($ormawa), ENT_QUOTES, 'UTF-8');
+                                        ?>
+                                        <p class="ormawa-description"><?php echo htmlspecialchars(substr($ormawa['deskripsi'], 0, 100)) . (strlen($ormawa['deskripsi']) > 100 ? '...' : ''); ?></p>
+                                        
+                                        <!-- MODIFIED: Button uses json_encode for safe data transfer -->
+                                        <button class="btn btn-primary btn-sm" onclick="showOrmawaDetail(<?php echo $ormawa_json; ?>)">
+                                            Selengkapnya
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
+                            <?php endforeach; ?>
+                            
+                            <!-- Placeholder untuk memastikan 3 card per slide -->
+                            <?php for($i = count($chunk); $i < 3; $i++): ?>
+                                <div class="ormawa-card" style="visibility: hidden; border: none; box-shadow: none;">
+                                    <div class="ormawa-logo">
+                                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+                                    </div>
+                                    <div class="ormawa-content">
+                                        <h5 class="ormawa-title">&nbsp;</h5>
+                                        <p class="ormawa-description">&nbsp;</p>
+                                    </div>
+                                </div>
+                            <?php endfor; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="ormawa-slide">
+                        <div class="col-12">
+                            <p class="text-center">Belum ada data Organisasi Mahasiswa.</p>
                         </div>
                     </div>
+                <?php endif; ?>
+            </div>
+        </div>
 
-                    <!-- Recent Activity Row -->
-                    <div class="row">
-                        <!-- Recent Events Table -->
-                        <div class="col-xl-12 col-lg-12">
-                            <div class="card shadow mb-4">
-                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Event Terbaru</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered" id="recentEventsTable" width="100%" cellspacing="0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Nama Event</th>
-                                                    <th>Ormawa</th>
-                                                    <th>Tanggal Mulai</th>
-                                                    <th>Tanggal Selesai</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                $recent_events = getRecentEvents($koneksi);
-                                                foreach ($recent_events as $event) {
-                                                    echo "<tr>";
-                                                    echo "<td><a href='Index.php?page=event' class='text-primary text-decoration-none'>" . htmlspecialchars($event['nama_event']) . "</a></td>";
-                                                    echo "<td>" . htmlspecialchars($event['nama_ormawa']) . "</td>";
-                                                    echo "<td>" . date('d M Y', strtotime($event['tgl_mulai'])) . "</td>";
-                                                    echo "<td>" . date('d M Y', strtotime($event['tgl_selesai'])) . "</td>";
-                                                    echo "</tr>";
-                                                }
-                                                if (empty($recent_events)) {
-                                                    echo "<tr><td colspan='4' class='text-center'>Tidak ada event terbaru</td></tr>";
-                                                }
-                                                ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-    
-<!-- Script untuk grafik distribusi kategori ormawa -->
-<script>
-// Set new default font family and font color to mimic Bootstrap's default styling
-Chart.defaults.global.defaultFontFamily = 'Nunito', '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
-Chart.defaults.global.defaultFontColor = '#858796';
-
-// Pie Chart Example for Ormawa Categories
-var ctx = document.getElementById("ormawaCategoryChart");
-var ormawaCategoryChart = new Chart(ctx, {
-  type: 'doughnut',
-  data: {
-    labels: [
-      <?php
-      $ormawa_by_category = getOrmawaByCategory($koneksi);
-      foreach ($ormawa_by_category as $category) {
-        echo '"' . addslashes(htmlspecialchars($category['kategori'])) . '",';
-      }
-      ?>
-    ],
-    datasets: [{
-      data: [
-        <?php
-        foreach ($ormawa_by_category as $category) {
-          echo $category['jumlah'] . ',';
-        }
-        ?>
-      ],
-      backgroundColor: [
-        '#4e73df',
-        '#1cc88a',
-        '#36b9cc',
-        '#f6c23e',
-        '#e74a3b',
-        '#858796',
-        '#5a5c69'
-      ],
-      hoverBackgroundColor: [
-        '#2e59d9',
-        '#17a673',
-        '#2c9faf',
-        '#f5b507',
-        '#d62828',
-        '#757786',
-        '#4a4c5b'
-      ],
-      hoverBorderColor: "rgba(234, 236, 244, 1)",
-    }],
-  },
-  options: {
-    maintainAspectRatio: false,
-    tooltips: {
-      backgroundColor: "rgb(255,255,255)",
-      bodyFontColor: "#858796",
-      borderColor: '#dddfeb',
-      borderWidth: 1,
-      xPadding: 15,
-      yPadding: 15,
-      displayColors: false,
-      caretPadding: 10,
-    },
-    legend: {
-      display: false
-    },
-    cutoutPercentage: 80,
-  },
-});
-</script>
+        <!-- Slider Controls -->
+        <div class="ormawa-slider-controls">
+            <span class="ormawa-arrow" onclick="changeOrmawaSlide(-1)">
+                <i class="bi bi-chevron-left"></i>
+            </span>
+            <div class="ormawa-dots">
+                <?php for($i = 0; $i < count($ormawa_chunks); $i++): ?>
+                    <span class="ormawa-dot <?php echo $i === 0 ? 'active' : ''; ?>" onclick="goToOrmawaSlide(<?php echo $i; ?>)"></span>
+                <?php endfor; ?>
+            </div>
+            <span class="ormawa-arrow" onclick="changeOrmawaSlide(1)">
+                <i class="bi bi-chevron-right"></i>
+            </span>
+        </div>
+    </div>
+</section>
 
 
-<!-- Script untuk grafik tren event per bulan -->
-<script>
-// Line Chart Example for Event Trend
-var ctx2 = document.getElementById("eventTrendChart");
-var eventTrendChart = new Chart(ctx2, {
-  type: 'line',
-  data: {
-    labels: [
-      <?php
-      $event_trend = getEventTrend($koneksi);
-      foreach ($event_trend as $trend) {
-        echo '"' . $trend['bulan'] . '",';
-      }
-      ?>
-    ],
-    datasets: [{
-      label: "Jumlah Event",
-      lineTension: 0.3,
-      backgroundColor: "rgba(78, 115, 223, 0.05)",
-      borderColor: "rgba(78, 115, 223, 1)",
-      pointRadius: 3,
-      pointBackgroundColor: "rgba(78, 115, 223, 1)",
-      pointBorderColor: "rgba(78, 115, 223, 1)",
-      pointHoverRadius: 3,
-      pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
-      pointHoverBorderColor: "rgba(78, 115, 223, 1)",
-      pointHitRadius: 10,
-      pointBorderWidth: 2,
-      data: [
-        <?php
-        foreach ($event_trend as $trend) {
-          echo $trend['jumlah'] . ',';
-        }
-        ?>
-      ],
-    }],
-  },
-  options: {
-    maintainAspectRatio: false,
-    layout: {
-      padding: {
-        left: 10,
-        right: 25,
-        top: 25,
-        bottom: 0
-      }
-    },
-    scales: {
-      xAxes: [{
-        gridLines: {
-          display: false,
-          drawBorder: false
-        },
-        ticks: {
-          maxTicksLimit: 7
-        }
-      }],
-      yAxes: [{
-        ticks: {
-          maxTicksLimit: 5,
-          padding: 10,
-        },
-        gridLines: {
-          color: "rgb(234, 236, 244)",
-          zeroLineColor: "rgb(234, 236, 244)",
-          drawBorder: false,
-          borderDash: [2],
-          zeroLineBorderDash: [2]
-        }
-      }],
-    },
-    legend: {
-      display: false
-    },
-    tooltips: {
-      backgroundColor: "rgb(255,255,255)",
-      bodyFontColor: "#858796",
-      titleMarginBottom: 10,
-      titleFontColor: '#6e707e',
-      titleFontSize: 14,
-      borderColor: '#dddfeb',
-      borderWidth: 1,
-      xPadding: 15,
-      yPadding: 15,
-      displayColors: false,
-      intersect: false,
-      mode: 'index',
-      caretPadding: 10,
-      callbacks: {
-        label: function(tooltipItem, chart) {
-          var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-          return datasetLabel + ': ' + tooltipItem.yLabel;
-        }
-      }
-    }
-  }
-});
-</script>
+    <section id="kontak" class="contact-section">
+        <div class="container">
+            <div class="section-title">
+                <h2 class="text-white">Hubungi Kami</h2>
+                <p class="text-white-50">Jangan ragu untuk menghubungi kami</p>
+            </div>
 
-<!-- Script untuk grafik distribusi user per level -->
-<script>
-// Pie Chart Example for User Distribution
-var ctx3 = document.getElementById("userDistributionChart");
-var user_distribution = <?php echo json_encode(getUserDistribution($koneksi)); ?>;
-var labels = [];
-var data = [];
+            <div class="row g-4 mb-5">
+                <div class="col-lg-4 col-md-6">
+                    <div class="contact-card">
+                        <i class="bi bi-geo-alt contact-icon"></i>
+                        <h5>Alamat</h5>
+                        <p class="mb-0">Kampus Universitas<br>Jl. Pendidikan No. 123<br>Kota, Provinsi 12345</p>
+                    </div>
+                </div>
 
-for(var i = 0; i < user_distribution.length; i++) {
-    // Konversi level ke label yang lebih deskriptif
-    var levelLabel = user_distribution[i].level;
-    switch(levelLabel) {
-        case '1': levelLabel = 'Super Admin'; break;
-        case '2': levelLabel = 'Admin Ormawa'; break;
-        case '3': levelLabel = 'Pengurus'; break;
-        case '4': levelLabel = 'Mahasiswa'; break;
-        default: levelLabel = 'Level ' + levelLabel; break;
-    }
-    labels.push(levelLabel);
-    data.push(user_distribution[i].jumlah);
-}
+                <div class="col-lg-4 col-md-6">
+                    <div class="contact-card">
+                        <i class="bi bi-telephone contact-icon"></i>
+                        <h5>Telepon</h5>
+                        <p class="mb-0">(021) 1234-5678<br>+62 812-3456-7890</p>
+                    </div>
+                </div>
 
-var userDistributionChart = new Chart(ctx3, {
-  type: 'doughnut',
-  data: {
-    labels: labels,
-    datasets: [{
-      data: data,
-      backgroundColor: [
-        '#4e73df',
-        '#1cc88a',
-        '#36b9cc',
-        '#f6c23e',
-        '#e74a3b',
-        '#858796',
-        '#5a5c69'
-      ],
-      hoverBackgroundColor: [
-        '#2e59d9',
-        '#17a673',
-        '#2c9faf',
-        '#f5b507',
-        '#d62828',
-        '#757786',
-        '#4a4c5b'
-      ],
-      hoverBorderColor: "rgba(234, 236, 244, 1)",
-    }],
-  },
-  options: {
-    maintainAspectRatio: false,
-    tooltips: {
-      backgroundColor: "rgb(255,255,255)",
-      bodyFontColor: "#858796",
-      borderColor: '#dddfeb',
-      borderWidth: 1,
-      xPadding: 15,
-      yPadding: 15,
-      displayColors: false,
-      caretPadding: 10,
-    },
-    legend: {
-      display: false
-    },
-    cutoutPercentage: 80,
-  },
-});
-</script>
+                <div class="col-lg-4 col-md-6">
+                    <div class="contact-card">
+                        <i class="bi bi-envelope contact-icon"></i>
+                        <h5>Email</h5>
+                        <p class="mb-0">ormawa@kampus.ac.id<br>info@ormawakampus.com</p>
+                    </div>
+                </div>
+            </div>
 
-<?php
-include('../SuperAdmin/Footer.php');
-?>
+
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <h5 class="footer-title">Ormawa Kampus</h5>
+                    <p class="text-white-50 mb-4">
+                        Wadah aspirasi dan kreativitas mahasiswa untuk mengembangkan potensi
+                        kepemimpinan dan berkontribusi bagi kampus dan masyarakat.
+                    </p>
+                    <div class="social-links">
+                        <a href="#"><i class="bi bi-facebook"></i></a>
+                        <a href="#"><i class="bi bi-instagram"></i></a>
+                        <a href="#"><i class="bi bi-twitter"></i></a>
+                        <a href="#"><i class="bi bi-youtube"></i></a>
+                        <a href="#"><i class="bi bi-linkedin"></i></a>
+                    </div>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="footer-title">Tautan Cepat</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#home" class="text-white-50 text-decoration-none">Beranda</a></li>
+                        <li class="mb-2"><a href="#profil" class="text-white-50 text-decoration-none">Profil</a></li>
+                        <li class="mb-2"><a href="#kegiatan" class="text-white-50 text-decoration-none">Kegiatan</a></li>
+                        <li class="mb-2"><a href="#struktur" class="text-white-50 text-decoration-none">Struktur</a></li>
+                        <li class="mb-2"><a href="#galeri" class="text-white-50 text-decoration-none">Galeri</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="footer-title">Layanan</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Pendaftaran Anggota</a></li>
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Proposal Kegiatan</a></li>
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Peminjaman Fasilitas</a></li>
+                        <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none">Kerjasama</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="footer-title">Kontak</h5>
+                    <ul class="list-unstyled text-white-50">
+                        <li class="mb-2">
+                            <i class="bi bi-geo-alt me-2"></i>
+                            Jl. Pendidikan No. 123, Kota
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-telephone me-2"></i>
+                            (021) 1234-5678
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-envelope me-2"></i>
+                            ormawa@kampus.ac.id
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr class="my-4 border-secondary">
+
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="text-white-50 mb-0">&copy; 2025 Ormawa Kampus. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="text-white-50 mb-0">Developed with <i class="bi bi-heart-fill text-danger"></i> by Tim IT Ormawa</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const totalOrmawaSlides = <?php echo count($ormawa_chunks); ?>;
+    </script>
+    <script src="../../../Asset/Js/LandingPage.js"></script>
+    <script src="../../../Asset/Js/Modal.js"></script>
+</body>
+</html>

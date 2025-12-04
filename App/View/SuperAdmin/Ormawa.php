@@ -19,6 +19,9 @@ function getOrmawaData($koneksi) {
 }
 
 $ormawa_list = getOrmawaData($koneksi);
+
+// Daftar Kategori untuk Filter
+$kategori_list = ['Semua', 'Lembaga', 'Akademik', 'Rohani', 'Minat', 'Olahraga', 'Seni'];
 ?>
 
 <style>
@@ -32,30 +35,33 @@ $ormawa_list = getOrmawaData($koneksi);
         min-width: 80px;
         text-align: center;
     }
-    /* Search box custom */
+    
     .search-box {
-        max-width: 400px;
-        margin-bottom: 1rem;
+        margin-bottom: 0; 
     }
+    
+    .search-box .input-group-text {
+        border-right: none; /* Hilangkan garis kanan pada input-group-text agar menyatu */
+    }
+
     .search-box input {
-        padding-left: 2.5rem;
+        border-left: none; /* Hilangkan garis kiri pada input agar menyatu dengan input-group-text */
     }
-    .search-box i {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #6c757d;
+
+    .row.align-items-center > div {
+        margin-bottom: 0.5rem; 
     }
-    .search-box .input-group {
-        position: relative;
+    @media (min-width: 768px) {
+        .row.align-items-center > div {
+            margin-bottom: 0; 
+        }
     }
 </style>
 
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-users"></i> Data Organisasi Mahasiswa (Ormawa)
+            <i class="fas fa-users"></i> Data Organisasi Mahasiswa
         </h1>
         <button class="btn btn-success btn-icon-split" data-bs-toggle="modal" data-bs-target="#modalForm" onclick="resetForm()">
             <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
@@ -63,22 +69,41 @@ $ormawa_list = getOrmawaData($koneksi);
         </button>
     </div>
 
-    <!-- ✅ SEARCH BOX MANUAL -->
-    <div class="row mb-3">
-        <div class="col-md-6">
+    <div class="row mb-3 align-items-center">
+        
+        <div class="col-md-5">
             <div class="search-box">
                 <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0">
+                    <span class="input-group-text" id="basic-addon1">
                         <i class="fas fa-search"></i>
                     </span>
-                    <input type="text" id="searchInput" class="form-control border-start-0" 
-                           placeholder="Cari: Nama, Kategori, Email, Contact Person..." 
-                           onkeyup="filterTable()">
+                    <input type="text" id="searchInput" class="form-control" 
+                            placeholder="Cari: Nama, Kategori, Email, Contact Person..." 
+                            onkeyup="filterAll()">
                 </div>
             </div>
         </div>
+        
+        <div class="col-md-4">
+            <select class="form-control" id="filterKategori" onchange="filterAll()">
+                <option value="Semua">Semua Kategori</option>
+                <?php foreach ($kategori_list as $kategori): ?>
+                    <?php if ($kategori !== 'Semua'): ?>
+                        <option value="<?php echo htmlspecialchars($kategori); ?>">
+                            <?php echo htmlspecialchars($kategori); ?>
+                        </option>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        
+        <div class="col-md-3">
+            <button class="btn btn-secondary w-100" onclick="resetFilters()">
+                <i class="fas fa-redo"></i> Reset Filter
+            </button>
+        </div>
+        
     </div>
-
     <?php if (isset($_GET['success']) && $_GET['success'] == 'form'): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <i class="fas fa-check-circle"></i> Data berhasil disimpan!
@@ -128,12 +153,12 @@ $ormawa_list = getOrmawaData($koneksi);
                             <th width="3%">Logo</th>
                             <th width="9%">Nama Ormawa</th>
                             <th width="5%">Kategori</th>
-                            <th width="18%">Deskripsi</th>   
-                            <th width="25%">Visi</th>        
-                            <th width="25%">Misi</th>        
-                            <th width="3%">Email</th>       
+                            <th width="18%">Deskripsi</th> 
+                            <th width="25%">Visi</th>      
+                            <th width="25%">Misi</th>      
+                            <th width="3%">Email</th>     
                             <th width="13%">Contact Person</th> 
-                            <th width="2%">Aksi</th>        
+                            <th width="2%">Aksi</th>      
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -151,7 +176,7 @@ $ormawa_list = getOrmawaData($koneksi);
                                     case 'Olahraga': $badgeClass = 'bg-secondary'; break;
                                 }
                                 
-                                // ✅ Simpan data ke atribut `data-search` untuk pencarian
+                                // Simpan data ke atribut `data-search` & `data-kategori`
                                 $searchText = strtolower(
                                     $ormawa['nama_ormawa'] . ' ' .
                                     $ormawa['kategori'] . ' ' .
@@ -160,17 +185,18 @@ $ormawa_list = getOrmawaData($koneksi);
                                     $ormawa['deskripsi']
                                 );
                                 
-                                echo "<tr data-search=\"" . htmlspecialchars($searchText, ENT_QUOTES) . "\">";
+                                echo "<tr data-search=\"" . htmlspecialchars($searchText, ENT_QUOTES) . "\" 
+                                          data-kategori=\"" . htmlspecialchars($ormawa['kategori'], ENT_QUOTES) . "\">";
                                 echo "<td class='text-center'>" . $no++ . "</td>";
                                 
                                 echo "<td class='text-center'>";
                                 if (!empty($ormawa['logo'])) {
                                     echo '<img src="../../../uploads/logos/' . htmlspecialchars($ormawa['logo']) . '" 
-                                            alt="Logo" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;">';
+                                                alt="Logo" class="img-thumbnail" style="max-width: 60px; max-height: 60px; object-fit: cover;">';
                                 } else {
                                     echo '<div class="bg-light border rounded d-flex align-items-center justify-content-center" 
-                                            style="width: 60px; height: 60px;">
-                                            <i class="fas fa-image text-muted"></i></div>';
+                                                style="width: 60px; height: 60px;">
+                                                <i class="fas fa-image text-muted"></i></div>';
                                 }
                                 echo "</td>";
                                 
@@ -187,42 +213,42 @@ $ormawa_list = getOrmawaData($koneksi);
                                 echo "<td>" . (strlen($misi) > 200 ? substr($misi, 0, 200) . "..." : $misi) . "</td>";
                                 
                                 echo "<td class='table-cell-fixed'>" . (!empty($ormawa['email']) ? '<a href="mailto:' . htmlspecialchars($ormawa['email']) . '">' . 
-                                            htmlspecialchars($ormawa['email']) . '</a>' : '-') . "</td>";
+                                             htmlspecialchars($ormawa['email']) . '</a>' : '-') . "</td>";
                                 
                                 echo "<td class='table-cell-fixed'>" . (!empty($ormawa['contact_person']) ? htmlspecialchars($ormawa['contact_person']) : '-') . "</td>";
                                 
                                 echo "<td class='action-cell'>";
                                 
                                 echo "<button class='btn btn-info btn-circle btn-sm me-1 mb-1' 
-                                            data-bs-toggle='modal' data-bs-target='#modalDetail' 
-                                            onclick='viewDetail(" . $ormawa['id'] . ")' 
-                                            title='Lihat Detail'>
-                                            <i class='fas fa-eye'></i>
-                                            </button> ";
+                                                data-bs-toggle='modal' data-bs-target='#modalDetail' 
+                                                onclick='viewDetail(" . $ormawa['id'] . ")' 
+                                                title='Lihat Detail'>
+                                                <i class='fas fa-eye'></i>
+                                                </button> ";
                                 
                                 echo "<button class='btn btn-warning btn-circle btn-sm me-1 mb-1' 
-                                            data-bs-toggle='modal' 
-                                            data-bs-target='#modalForm' 
-                                            data-id='" . $ormawa['id'] . "'
-                                            data-nama='" . htmlspecialchars($ormawa['nama_ormawa'], ENT_QUOTES) . "'
-                                            data-deskripsi='" . htmlspecialchars($ormawa['deskripsi'], ENT_QUOTES) . "'
-                                            data-kategori='" . htmlspecialchars($ormawa['kategori'], ENT_QUOTES) . "'
-                                            data-visi='" . htmlspecialchars($ormawa['visi'], ENT_QUOTES) . "'
-                                            data-misi='" . htmlspecialchars($ormawa['misi'], ENT_QUOTES) . "'
-                                            data-email='" . htmlspecialchars($ormawa['email'], ENT_QUOTES) . "'
-                                            data-contact='" . htmlspecialchars($ormawa['contact_person'], ENT_QUOTES) . "'
-                                            data-logo='" . htmlspecialchars($ormawa['logo'], ENT_QUOTES) . "'
-                                            onclick='editOrmawaFromButton(this)'
-                                            title='Edit'>
-                                            <i class='fas fa-edit'></i>
-                                            </button> ";
+                                                data-bs-toggle='modal' 
+                                                data-bs-target='#modalForm' 
+                                                data-id='" . $ormawa['id'] . "'
+                                                data-nama='" . htmlspecialchars($ormawa['nama_ormawa'], ENT_QUOTES) . "'
+                                                data-deskripsi='" . htmlspecialchars($ormawa['deskripsi'], ENT_QUOTES) . "'
+                                                data-kategori='" . htmlspecialchars($ormawa['kategori'], ENT_QUOTES) . "'
+                                                data-visi='" . htmlspecialchars($ormawa['visi'], ENT_QUOTES) . "'
+                                                data-misi='" . htmlspecialchars($ormawa['misi'], ENT_QUOTES) . "'
+                                                data-email='" . htmlspecialchars($ormawa['email'], ENT_QUOTES) . "'
+                                                data-contact='" . htmlspecialchars($ormawa['contact_person'], ENT_QUOTES) . "'
+                                                data-logo='" . htmlspecialchars($ormawa['logo'], ENT_QUOTES) . "'
+                                                onclick='editOrmawaFromButton(this)'
+                                                title='Edit'>
+                                                <i class='fas fa-edit'></i>
+                                                </button> ";
                                 
                                 echo "<a href='../../../Function/OrmawaFunction.php?action=delete&id=" . $ormawa['id'] . "' 
-                                            class='btn btn-danger btn-circle btn-sm mb-1' 
-                                            onclick='return confirm(\"Yakin ingin menghapus data " . htmlspecialchars($ormawa['nama_ormawa']) . "?\")' 
-                                            title='Hapus'>
-                                            <i class='fas fa-trash'></i>
-                                            </a>";
+                                                class='btn btn-danger btn-circle btn-sm mb-1' 
+                                                onclick='return confirm(\"Yakin ingin menghapus data " . htmlspecialchars($ormawa['nama_ormawa']) . "?\")' 
+                                                title='Hapus'>
+                                                <i class='fas fa-trash'></i>
+                                                </a>";
                                 
                                 echo "</td>";
                                 echo "</tr>";
@@ -235,14 +261,13 @@ $ormawa_list = getOrmawaData($koneksi);
                 </table>
                 <div id="noResults" class="text-center text-muted mt-3 d-none">
                     <i class="fas fa-magnifying-glass fa-2x mb-2"></i>
-                    <p>Tidak ada data yang sesuai dengan pencarian Anda.</p>
+                    <p>Tidak ada data yang sesuai dengan pencarian atau filter Anda.</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal & Script -->
 <div class="modal fade" id="modalDetail" tabindex="-1" aria-labelledby="modalDetailLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -267,17 +292,30 @@ $ormawa_list = getOrmawaData($koneksi);
 </div>
 
 <script>
-// ✅ FUNGSI SEARCH MANUAL (pure JavaScript)
-function filterTable() {
-    const input = document.getElementById('searchInput');
-    const filter = input.value.toLowerCase().trim();
+// ✅ FUNGSI GABUNGAN SEARCH DAN FILTER
+function filterAll() {
+    const searchInput = document.getElementById('searchInput');
+    const kategoriFilter = document.getElementById('filterKategori');
+    
+    const searchText = searchInput.value.toLowerCase().trim();
+    const selectedKategori = kategoriFilter.value; // 'Semua', 'Lembaga', 'Akademik', dll.
+    
     const table = document.getElementById('ormawaTable');
     const rows = table.querySelectorAll('tbody tr');
     let visibleCount = 0;
 
     rows.forEach(row => {
-        const searchText = row.getAttribute('data-search') || '';
-        if (filter === '' || searchText.includes(filter)) {
+        const rowSearchText = row.getAttribute('data-search') || '';
+        const rowKategori = row.getAttribute('data-kategori') || '';
+
+        // 1. Cek Pencarian
+        const isSearchMatch = searchText === '' || rowSearchText.includes(searchText);
+
+        // 2. Cek Filter Kategori
+        const isKategoriMatch = selectedKategori === 'Semua' || rowKategori === selectedKategori;
+
+        // Tampilkan baris jika cocok dengan pencarian DAN kategori
+        if (isSearchMatch && isKategoriMatch) {
             row.style.display = '';
             visibleCount++;
         } else {
@@ -287,14 +325,20 @@ function filterTable() {
 
     // Tampilkan/menyembunyikan pesan "tidak ada hasil"
     const noResults = document.getElementById('noResults');
-    if (filter !== '' && visibleCount === 0) {
+    if (visibleCount === 0) {
         noResults.classList.remove('d-none');
     } else {
         noResults.classList.add('d-none');
     }
 }
 
-// Fungsi lainnya (viewDetail, edit, dll) tetap sama seperti sebelumnya
+// ✅ FUNGSI RESET FILTER
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterKategori').value = 'Semua';
+    filterAll(); // Terapkan semua filter/search yang kosong
+}
+
 function viewDetail(id) {
     const ormawaData = <?php echo json_encode($ormawa_list); ?>;
     const ormawa = ormawaData.find(item => parseInt(item.id) === id);
@@ -355,13 +399,14 @@ function editOrmawaFromButton(button) {
 }
 
 function resetForm() {
-    document.getElementById('ormawaForm')?.reset();
+    document.getElementById('ormawaForm')?.reset(); 
     document.getElementById('formAction').value = 'add';
     document.getElementById('editId').value = '';
     document.getElementById('modalFormLabel').textContent = 'Tambah Ormawa';
     document.getElementById('logoPreview').innerHTML = '';
 }
 
+// Event Listener untuk Preview Logo
 document.getElementById('logo')?.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {

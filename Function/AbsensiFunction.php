@@ -94,6 +94,7 @@ try {
         $result = mysqli_stmt_get_result($checkStmt);
         $ormawaExists = $result ? $result->fetch_assoc() : null;
         mysqli_stmt_close($checkStmt);
+
         if (!$ormawaExists) {
             throw new Exception("ORMAWA tidak ditemukan.");
         }
@@ -107,9 +108,11 @@ try {
 
         $dt_mulai = DateTime::createFromFormat('Y-m-d\TH:i', $mulai);
         $dt_selesai = DateTime::createFromFormat('Y-m-d\TH:i', $selesai);
+
         if (!$dt_mulai || !$dt_selesai) {
             throw new Exception("Format waktu tidak valid.");
         }
+
         if ($dt_mulai >= $dt_selesai) {
             throw new Exception("Waktu selesai harus lebih besar dari waktu mulai.");
         }
@@ -128,6 +131,7 @@ try {
             $resLoc = mysqli_stmt_get_result($checkLoc);
             $validLoc = $resLoc ? mysqli_fetch_assoc($resLoc) : null;
             mysqli_stmt_close($checkLoc);
+
             if (!$validLoc) {
                 throw new Exception("Lokasi tidak valid atau bukan milik ORMawa ini.");
             }
@@ -168,16 +172,20 @@ try {
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) throw new Exception("ID tidak valid.");
 
-        $getOrmawa = mysqli_prepare($koneksi, "SELECT ormawa_id FROM kehadiran WHERE id = ?");
-        if (!$getOrmawa) throw new Exception("Query gagal.");
-        mysqli_stmt_bind_param($getOrmawa, "i", $id);
-        mysqli_stmt_execute($getOrmawa);
-        $result = mysqli_stmt_get_result($getOrmawa);
+        $checkStatus = mysqli_prepare($koneksi, "SELECT status, ormawa_id FROM kehadiran WHERE id = ?");
+        if (!$checkStatus) throw new Exception("Query gagal.");
+        mysqli_stmt_bind_param($checkStatus, "i", $id);
+        mysqli_stmt_execute($checkStatus);
+        $result = mysqli_stmt_get_result($checkStatus);
         $row = mysqli_fetch_assoc($result);
-        mysqli_stmt_close($getOrmawa);
+        mysqli_stmt_close($checkStatus);
 
         if (!$row) {
             throw new Exception("Sesi tidak ditemukan.");
+        }
+
+        if ($row['status'] === 'selesai') {
+            throw new Exception("Sesi ini sudah dihentikan sebelumnya.");
         }
 
         $sesi_ormawa_id = (int)$row['ormawa_id'];
@@ -205,8 +213,10 @@ try {
         $id = (int)($_GET['kehadiran_id'] ?? 0);
         if ($id <= 0) throw new Exception("ID sesi tidak valid.");
 
-        // ✅ Ambil data sesi (waktu_mulai untuk cek terlambat)
-        $getSession = mysqli_prepare($koneksi, "SELECT ormawa_id, waktu_mulai FROM kehadiran WHERE id = ?");
+        // ✅ PERBAIKAN: Ambil waktu_selesai untuk patokan status
+        $getSession = mysqli_prepare($koneksi, 
+            "SELECT ormawa_id, waktu_selesai FROM kehadiran WHERE id = ?"
+        );
         if (!$getSession) throw new Exception("Query gagal.");
         mysqli_stmt_bind_param($getSession, "i", $id);
         mysqli_stmt_execute($getSession);
@@ -219,28 +229,37 @@ try {
         }
 
         $sesi_ormawa_id = (int)$session['ormawa_id'];
-        $waktu_mulai = $session['waktu_mulai'];
+        $waktu_selesai = $session['waktu_selesai'];
 
         if ($user_level === 2 && $sesi_ormawa_id !== $session_ormawa_id) {
             throw new Exception("Anda tidak memiliki akses ke sesi ini.");
         }
 
-        // ✅ Query peserta dengan status terlambat
-        $query = "SELECT u.full_name, al.waktu_absen, al.tipe_absen,
-                  CASE 
-                      WHEN al.waktu_absen > ? THEN 'Terlambat'
-                      ELSE 'Hadir'
-                  END AS status_kehadiran
-                  FROM absensi_log al
-                  JOIN user u ON al.user_id = u.id
-                  WHERE al.kehadiran_id = ?
-                  ORDER BY al.waktu_absen ASC";
+        // ✅ PERBAIKAN: Logika status HANYA berdasarkan waktu_selesai
+        // - waktu_absen <= waktu_selesai → "Hadir"
+        // - waktu_absen > waktu_selesai → "Terlambat"
         
+        $query = "SELECT 
+                    u.full_name, 
+                    al.waktu_absen, 
+                    al.tipe_absen,
+                    CASE 
+                        WHEN al.waktu_absen <= ? THEN 'Hadir'
+                        ELSE 'Terlambat'
+                    END AS status_kehadiran
+                 FROM absensi_log al
+                 JOIN user u ON al.user_id = u.id
+                 WHERE al.kehadiran_id = ?
+                 ORDER BY al.waktu_absen ASC";
+
         $stmt = mysqli_prepare($koneksi, $query);
         if (!$stmt) throw new Exception("Gagal query peserta.");
-        mysqli_stmt_bind_param($stmt, "si", $waktu_mulai, $id);
+        
+        mysqli_stmt_bind_param($stmt, "si", $waktu_selesai, $id);
+        
         mysqli_stmt_execute($stmt);
         $res = mysqli_stmt_get_result($stmt);
+        
         if (!$res) {
             mysqli_stmt_close($stmt);
             throw new Exception("Gagal mengambil data peserta.");
@@ -251,6 +270,7 @@ try {
             $peserta[] = $row;
         }
         mysqli_stmt_close($stmt);
+
         jsonResponse(true, 'OK', ['peserta' => $peserta]);
     }
 

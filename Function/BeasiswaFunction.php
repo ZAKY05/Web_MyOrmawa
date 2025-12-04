@@ -16,24 +16,26 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// ✅ Tentukan level & batasan ORMawa
+// ✅ Tentukan level & batasan Ormawa
 $user_level = (int)($_SESSION['user_level'] ?? 0);
-$ormawa_id_restricted = null; // null = SuperAdmin (semua), angka = hanya milik Ormawa tsb
+$ormawa_id_restricted = null;
 
-if ($user_level === 2) { // Admin Organisasi
+if ($user_level === 2) {
+    // Admin Organisasi
     $ormawa_id_restricted = (int)($_SESSION['ormawa_id'] ?? 0);
     if ($ormawa_id_restricted <= 0) {
-        $_SESSION['error'] = "Anda tidak terdaftar di ORMawa manapun.";
-        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../Admin/Beasiswa.php'));
+        $_SESSION['error'] = "Anda tidak terdaftar di Ormawa manapun.";
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
         exit();
     }
-} elseif ($user_level !== 1) { // Bukan SuperAdmin (1) atau Admin (2)
+} elseif ($user_level !== 1) {
+    // Bukan SuperAdmin atau Admin
     $_SESSION['error'] = "Akses ditolak.";
     header("Location: " . ($_SERVER['HTTP_REFERER'] ?? '../index.php'));
     exit();
 }
 
-$uploadDir = '../uploads/beasiswa/';
+$uploadDir = __DIR__ . '/../Uploads/beasiswa/';
 if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
 // === TAMBAH / EDIT ===
@@ -41,35 +43,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $nama = trim($_POST['nama_beasiswa'] ?? '');
     $penyelenggara = trim($_POST['penyelenggara'] ?? '');
-    $periode = trim($_POST['periode'] ?? '');
     $deadline = trim($_POST['deadline'] ?? '');
     $deskripsi = trim($_POST['deskripsi'] ?? '');
 
-    if (!$nama || !$penyelenggara || !$deskripsi) {
-        $_SESSION['error'] = "Nama, penyelenggara, dan deskripsi wajib diisi.";
+    // Validasi input wajib
+    if (!$nama || !$penyelenggara || !$deskripsi || !$deadline) {
+        $_SESSION['error'] = "Nama beasiswa, penyelenggara, deskripsi, dan deadline wajib diisi.";
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit();
     }
 
     // 🔑 Ambil id_ormawa tergantung level
     $submitted_ormawa_id = null;
-    if ($user_level === 1) { // SuperAdmin
+    if ($user_level === 1) {
+        // SuperAdmin
         $submitted_ormawa_id = (int)($_POST['id_ormawa'] ?? 0);
         if ($submitted_ormawa_id <= 0) {
             $_SESSION['error'] = "Ormawa wajib dipilih.";
             header("Location: " . $_SERVER['HTTP_REFERER']);
             exit();
         }
-    } else { // Admin Organisasi
+    } else {
+        // Admin Organisasi
         $submitted_ormawa_id = $ormawa_id_restricted;
     }
 
-    // Validasi: pastikan ORMawa benar-benar ada
+    // Validasi: pastikan Ormawa benar-benar ada
     $check = mysqli_prepare($koneksi, "SELECT id FROM ormawa WHERE id = ?");
     mysqli_stmt_bind_param($check, "i", $submitted_ormawa_id);
     mysqli_stmt_execute($check);
     if (!mysqli_stmt_get_result($check)->num_rows) {
         $_SESSION['error'] = "Ormawa tidak valid.";
+        mysqli_stmt_close($check);
         header("Location: " . $_SERVER['HTTP_REFERER']);
         exit();
     }
@@ -96,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Upload panduan
+    // Upload file panduan
     if (!empty($_FILES['file_panduan']['name'])) {
         $file = $_FILES['file_panduan'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -116,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Edit
+    // EDIT
     if ($action === 'edit') {
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) {
@@ -125,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        // ✅ Cek kepemilikan: SuperAdmin boleh semua, Admin hanya miliknya
+        // ✅ Cek kepemilikan
         $where = $user_level === 1 ? "id = ?" : "id = ? AND id_ormawa = ?";
         $stmt = mysqli_prepare($koneksi, "SELECT gambar, file_panduan FROM beasiswa WHERE $where");
         if ($user_level === 1) {
@@ -143,9 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        $gambar = $gambar ?: $old['gambar'];
-        $file_panduan = $file_panduan ?: $old['file_panduan'];
+        // Gunakan file lama jika tidak ada upload baru
+        $gambar = $gambar ?: ($old['gambar'] ?? '');
+        $file_panduan = $file_panduan ?: ($old['file_panduan'] ?? '');
 
+        // Hapus file lama jika ada upload baru
         if ($_FILES['gambar']['name'] && $old['gambar'] && $old['gambar'] !== $gambar) {
             if (file_exists($uploadDir . $old['gambar'])) unlink($uploadDir . $old['gambar']);
         }
@@ -155,23 +162,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = mysqli_prepare($koneksi, "
             UPDATE beasiswa SET 
-                id_ormawa = ?, nama_beasiswa = ?, penyelenggara = ?, periode = ?, 
+                id_ormawa = ?, nama_beasiswa = ?, penyelenggara = ?, 
                 deadline = ?, deskripsi = ?, gambar = ?, file_panduan = ?
             WHERE id = ?
         ");
-        $bind = mysqli_stmt_bind_param($stmt, "isssssssi", 
-            $submitted_ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan, $id
+        $bind = mysqli_stmt_bind_param($stmt, "issssssi", 
+            $submitted_ormawa_id, $nama, $penyelenggara, $deadline, $deskripsi, $gambar, $file_panduan, $id
         );
 
-    } else { // Tambah
+    } else {
+        // TAMBAH
         $stmt = mysqli_prepare($koneksi, "
             INSERT INTO beasiswa (
-                id_ormawa, nama_beasiswa, penyelenggara, periode, 
+                id_ormawa, nama_beasiswa, penyelenggara, 
                 deadline, deskripsi, gambar, file_panduan
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        $bind = mysqli_stmt_bind_param($stmt, "isssssss", 
-            $submitted_ormawa_id, $nama, $penyelenggara, $periode, $deadline, $deskripsi, $gambar, $file_panduan
+        $bind = mysqli_stmt_bind_param($stmt, "issssss", 
+            $submitted_ormawa_id, $nama, $penyelenggara, $deadline, $deskripsi, $gambar, $file_panduan
         );
     }
 

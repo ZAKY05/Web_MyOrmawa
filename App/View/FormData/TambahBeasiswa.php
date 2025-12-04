@@ -4,16 +4,15 @@
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-graduation-cap me-2"></i> Tambah Beasiswa Baru
+                    <i class="fas fa-plus me-2"></i>Tambah Beasiswa Baru
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formBeasiswa" action="../../../Function/BeasiswaFunction.php" method="POST" enctype="multipart/form-data">
+            <form id="formTambahBeasiswa" action="../../../Function/BeasiswaFunction.php" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="add">
 
                 <div class="modal-body">
                     <?php
-                    // Ambil level dari session yang sudah aktif (pastikan session_start() sudah dipanggil di Index.php)
                     $user_level = (int)($_SESSION['user_level'] ?? 0);
                     ?>
 
@@ -21,15 +20,14 @@
                         <!-- SuperAdmin: Harus pilih Ormawa -->
                         <div class="mb-3">
                             <label class="form-label">Ormawa Penyelenggara <span class="text-danger">*</span></label>
-                            <select class="form-control" name="id_ormawa" required>
+                            <select class="form-select" name="id_ormawa" required>
                                 <option value="">— Pilih Ormawa —</option>
                                 <?php
-                                // Ambil daftar semua Ormawa
                                 $ormawa_list = mysqli_query($koneksi, "SELECT id, nama_ormawa FROM ormawa ORDER BY nama_ormawa");
                                 while ($o = mysqli_fetch_assoc($ormawa_list)):
-                                    echo '<option value="' . (int)$o['id'] . '">' . htmlspecialchars($o['nama_ormawa']) . '</option>';
-                                endwhile;
                                 ?>
+                                    <option value="<?= (int)$o['id']; ?>"><?= htmlspecialchars($o['nama_ormawa']); ?></option>
+                                <?php endwhile; ?>
                             </select>
                         </div>
 
@@ -41,20 +39,17 @@
                         ?>
 
                         <?php if ($ormawa_id <= 0): ?>
-                            <!-- ❌ Tidak terdaftar di ORMawa manapun -->
                             <div class="alert alert-danger">
                                 <i class="fas fa-exclamation-triangle me-1"></i>
-                                Anda tidak terdaftar di ORMawa manapun. Silakan hubungi SuperAdmin.
+                                Anda tidak terdaftar di Ormawa manapun. Silakan hubungi SuperAdmin.
                             </div>
                             <script>
-                                // Nonaktifkan tombol Simpan jika tidak ada ORMawa
                                 document.addEventListener('DOMContentLoaded', function() {
-                                    const submitBtn = document.querySelector('#formBeasiswa button[type="submit"]');
+                                    const submitBtn = document.querySelector('#formTambahBeasiswa button[type="submit"]');
                                     if (submitBtn) submitBtn.disabled = true;
                                 });
                             </script>
                         <?php else: ?>
-                            <!-- ✅ ORMawa valid -->
                             <input type="hidden" name="id_ormawa" value="<?= $ormawa_id; ?>">
                             <div class="mb-3">
                                 <label class="form-label">Ormawa Penyelenggara</label>
@@ -63,14 +58,13 @@
                         <?php endif; ?>
 
                     <?php else: ?>
-                        <!-- Akses tidak sah -->
                         <div class="alert alert-danger">
                             <i class="fas fa-lock me-1"></i>
                             Anda tidak memiliki izin untuk menambah beasiswa.
                         </div>
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
-                                const submitBtn = document.querySelector('#formBeasiswa button[type="submit"]');
+                                const submitBtn = document.querySelector('#formTambahBeasiswa button[type="submit"]');
                                 if (submitBtn) submitBtn.disabled = true;
                             });
                         </script>
@@ -90,38 +84,31 @@
                                placeholder="Contoh: BEM Universitas / Kemendikbud" maxlength="150">
                     </div>
 
-                    <!-- Periode & Deadline -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Periode (Opsional)</label>
-                            <input type="text" class="form-control" name="periode" 
-                                   placeholder="Contoh: Semester Ganjil 2025" maxlength="100">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Deadline (Opsional)</label>
-                            <input type="date" class="form-control" name="deadline">
-                        </div>
+                    <!-- Deadline -->
+                    <div class="mb-3">
+                        <label class="form-label">Deadline <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="deadline" required>
                     </div>
 
                     <!-- Deskripsi -->
                     <div class="mb-3">
                         <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
                         <textarea class="form-control" name="deskripsi" rows="4" required 
-                                  placeholder="Jelaskan syarat, benefit, cara daftar, dll."><?= htmlspecialchars($_POST['deskripsi'] ?? '', ENT_QUOTES); ?></textarea>
+                                  placeholder="Jelaskan syarat, benefit, cara daftar, dll."></textarea>
                     </div>
 
                     <!-- Gambar -->
                     <div class="mb-3">
-                        <label class="form-label">Gambar (Opsional)</label>
+                        <label class="form-label">Poster</label>
                         <input type="file" class="form-control" name="gambar" accept="image/jpeg,image/png,image/jpg">
-                        <small class="form-text text-muted">Format: JPG/PNG, maks. 2 MB</small>
+                        <div class="form-text text-muted">Format: JPG, PNG (maks 2MB)</div>
                     </div>
 
                     <!-- File Panduan -->
                     <div class="mb-3">
-                        <label class="form-label">Panduan (Opsional)</label>
+                        <label class="form-label">Buku Panduan</label>
                         <input type="file" class="form-control" name="file_panduan" accept=".pdf,.doc,.docx">
-                        <small class="form-text text-muted">Format: PDF/DOC/DOCX, maks. 10 MB</small>
+                        <div class="form-text text-muted">Format: PDF (maks 10MB)</div>
                     </div>
                 </div>
 
@@ -138,16 +125,12 @@
     </div>
 </div>
 
-<!-- Reset form saat modal ditutup/buka -->
+<!-- Reset form saat modal ditutup -->
 <script>
-    function resetFormBeasiswa() {
-        document.getElementById('formBeasiswa')?.reset();
-    }
-
-    // Kosongkan file input saat modal ditutup (opsional, untuk UX)
     document.getElementById('tambahBeasiswaModal')?.addEventListener('hidden.bs.modal', function () {
-        const form = document.getElementById('formBeasiswa');
+        const form = document.getElementById('formTambahBeasiswa');
         if (form) {
+            form.reset();
             const fileInputs = form.querySelectorAll('input[type="file"]');
             fileInputs.forEach(input => input.value = '');
         }

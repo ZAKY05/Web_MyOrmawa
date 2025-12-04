@@ -102,12 +102,6 @@ if ($user_level == 2 && $koneksi) {
                                             data-bs-toggle="modal" data-bs-target="#qrModal" title="Tampilkan QR">
                                             <i class="fas fa-qrcode"></i>
                                         </button>
-                                        <!-- Tombol Ekspor ke Excel -->
-                                        <button class="btn btn-sm btn-success me-1"
-                                            onclick="exportToExcel(<?= $s['id'] ?>)"
-                                            title="Ekspor ke Excel">
-                                            <i class="fas fa-file-excel"></i>
-                                        </button>
                                         <button class="btn btn-sm btn-warning me-1" onclick="loadPeserta(<?= $s['id'] ?>)"
                                             data-bs-toggle="modal" data-bs-target="#lihatPesertaModal" title="Lihat Peserta">
                                             <i class="fas fa-eye"></i>
@@ -166,20 +160,10 @@ if ($user_level == 2 && $koneksi) {
 </div>
 
 <?php include_once(__DIR__ . '/Footer.php'); ?>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js  "></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
     const BASE_URL_API = "../../../Function/AbsensiFunction.php";
     let countdownInterval;
-
-    function exportToExcel(kehadiranId) {
-        // Buat elemen link sementara
-        const link = document.createElement('a');
-        link.href = '../../../Function/ExportAbsensiFunction.php?kehadiran_id=' + kehadiranId;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
 
     function tampilkanQR(kode, judul, waktuSelesai, status) {
         document.getElementById('qrJudul').innerText = judul;

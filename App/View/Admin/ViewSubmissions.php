@@ -1,22 +1,9 @@
 <?php
-// App/View/Admin/ViewSubmissions.php
+// ../SuperAdmin/ViewSubmissionsComponent.php
 
-function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
-    // 1. Validasi Kepemilikan Form
-    $check_owner_query = "SELECT id FROM form_info WHERE id = ? AND user_id = ?";
-    $stmt_check = $koneksi->prepare($check_owner_query);
-    $stmt_check->bind_param("ii", $form_info_id, $current_user_id);
-    $stmt_check->execute();
-    $owner_result = $stmt_check->get_result();
-    if ($owner_result->num_rows === 0) {
-        echo "<div class='alert alert-danger'>Anda tidak memiliki izin untuk melihat submission ini.</div>";
-        return;
-    }
-    $stmt_check->close();
-
-    // 2. Logika yang sama dengan SuperAdmin/ViewSubmissions.php
-    // (Anda bisa menyalin-tempel kode dari SuperAdmin/ViewSubmissions.php ke sini,
-    // karena logikanya sudah benar setelah kepemilikan divalidasi)
+// Fungsi untuk menampilkan tabel submissions berdasarkan $form_info_id
+function displaySubmissionsForForm($koneksi, $form_info_id) {
+    // Validasi input
     if (!is_numeric($form_info_id) || $form_info_id <= 0) {
         echo "<p class='text-danger'>Invalid form ID.</p>";
         return;
@@ -60,7 +47,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
             s.user_id, 
             u.full_name as user_nama, 
             u.nim, 
-            u.username, 
             u.email, 
             s.form_id, 
             s.field_name, 
@@ -109,7 +95,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
             $unique_users[$user_id] = [
                 'nama'      => $sub['user_nama'],
                 'nim'       => $sub['nim'],
-                'username'  => $sub['username'],
                 'email'     => $sub['email']
             ];
             $organized_submissions[$user_id] = [];
@@ -143,6 +128,12 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
                 <i class="fas fa-users"></i> Submissions: <?= htmlspecialchars($form_detail['judul']) ?>
             </h6>
             <div class="d-flex">
+                <!-- Tombol Ekspor Excel -->
+                <a href="../../../Function/ExportFunction.php?form_info_id=<?= $form_info_id ?>&status=<?= $filter_status ?>" 
+                   class="btn btn-success btn-sm mr-2" 
+                   title="Ekspor ke Excel">
+                    <i class="fas fa-file-excel"></i> Ekspor Excel
+                </a>
                 <!-- Tombol Kembali -->
                 <!-- CATATAN: Ganti 'page=oprec' dengan parameter yang sesuai untuk kembali ke edit form Anda -->
                 <a href="?page=oprec&form_id=<?= $form_info_id ?>" class="btn btn-info btn-sm mr-2" title="Kembali ke Edit Form">
@@ -185,7 +176,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
                                 <th width="5%">No</th>
                                 <th width="20%">Pengguna</th>
                                 <th width="15%">NIM</th>
-                                <th width="15%">Username</th>
                                 <th width="20%">Email</th>
                                 <th width="10%" class="text-center">Status</th>
                                 <th width="10%" class="text-center">Jawaban</th>
@@ -209,7 +199,6 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
                                     <td class="text-center"><?= $no++ ?></td>
                                     <td><i class="fas fa-user-circle text-primary"></i> <?= htmlspecialchars($user_info['nama']) ?></td>
                                     <td><?= htmlspecialchars($user_info['nim']) ?></td>
-                                    <td><?= htmlspecialchars($user_info['username']) ?></td>
                                     <td><?= htmlspecialchars($user_info['email']) ?></td>
                                     <td class="text-center">
                                         <?php if ($current_status === 'approved'): ?>
@@ -366,7 +355,7 @@ function displaySubmissionsForForm($koneksi, $form_info_id, $current_user_id) {
                                             <div class="row">
                                                 <div class="col-md-3"><strong>Nama:</strong> <?= htmlspecialchars($user_info['nama']) ?></div>
                                                 <div class="col-md-3"><strong>NIM:</strong> <?= htmlspecialchars($user_info['nim']) ?></div>
-                                                <div class="col-md-3"><strong>Username:</strong> <?= htmlspecialchars($user_info['username']) ?></div>
+
                                                 <div class="col-md-3"><strong>Email:</strong> <?= htmlspecialchars($user_info['email']) ?></div>
                                             </div>
                                             <div class="row mt-2">

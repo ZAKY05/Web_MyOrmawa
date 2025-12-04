@@ -1,6 +1,6 @@
 <?php
 // ========================================
-// EVENT FUNCTION - FIXED VERSION
+// EVENT FUNCTION - UPDATED WITH TIME FIELDS
 // ========================================
 
 // Fungsi untuk mendapatkan data event
@@ -197,9 +197,11 @@ function handleEventOperations($koneksi) {
         $deskripsi = trim($_POST['deskripsi'] ?? '');
         $tgl_mulai = $_POST['tgl_mulai'] ?? '';
         $tgl_selesai = $_POST['tgl_selesai'] ?? '';
+        $waktu_mulai = $_POST['waktu_mulai'] ?? '';
+        $waktu_selesai = $_POST['waktu_selesai'] ?? '';
         $lokasi = trim($_POST['lokasi'] ?? '');
 
-        if (!$nama_event || !$kategori || !$deskripsi || !$tgl_mulai || !$tgl_selesai || !$lokasi) {
+        if (!$nama_event || !$kategori || !$deskripsi || !$tgl_mulai || !$tgl_selesai || !$waktu_mulai || !$waktu_selesai || !$lokasi) {
             $_SESSION['message'] = 'Semua field wajib diisi.';
             $_SESSION['msg_type'] = 'danger';
             return;
@@ -225,13 +227,13 @@ function handleEventOperations($koneksi) {
             }
         }
 
-        $stmt = mysqli_prepare($koneksi, "INSERT INTO event (ormawa_id, nama_event, kategori, deskripsi, tgl_mulai, tgl_selesai, lokasi, gambar, buku_panduan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        mysqli_stmt_bind_param($stmt, "issssssss", $ormawa_id, $nama_event, $kategori, $deskripsi, $tgl_mulai, $tgl_selesai, $lokasi, $gambar_nama, $buku_panduan_nama);
+        $stmt = mysqli_prepare($koneksi, "INSERT INTO event (ormawa_id, nama_event, kategori, deskripsi, tgl_mulai, tgl_selesai, waktu_mulai, waktu_selesai, lokasi, gambar, buku_panduan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        mysqli_stmt_bind_param($stmt, "issssssssss", $ormawa_id, $nama_event, $kategori, $deskripsi, $tgl_mulai, $tgl_selesai, $waktu_mulai, $waktu_selesai, $lokasi, $gambar_nama, $buku_panduan_nama);
 
         if (mysqli_stmt_execute($stmt)) {
             $_SESSION['message'] = 'Event berhasil ditambahkan.';
             $_SESSION['msg_type'] = 'success';
-            $_SESSION['redirect'] = true; // Flag untuk redirect via JavaScript
+            $_SESSION['redirect'] = true;
             mysqli_stmt_close($stmt);
         } else {
             $_SESSION['message'] = 'Gagal menambahkan event: ' . mysqli_error($koneksi);
@@ -277,12 +279,14 @@ function handleEventOperations($koneksi) {
         $deskripsi = trim($_POST['deskripsi'] ?? '');
         $tgl_mulai = $_POST['tgl_mulai'] ?? '';
         $tgl_selesai = $_POST['tgl_selesai'] ?? '';
+        $waktu_mulai = $_POST['waktu_mulai'] ?? null;
+        $waktu_selesai = $_POST['waktu_selesai'] ?? null;
         $lokasi = trim($_POST['lokasi'] ?? '');
         $gambar_lama = $_POST['gambar_lama'] ?? '';
         $buku_panduan_lama = $_POST['buku_panduan_lama'] ?? '';
 
         if (!$nama_event || !$kategori || !$deskripsi || !$tgl_mulai || !$tgl_selesai || !$lokasi) {
-            $_SESSION['message'] = 'Semua field wajib diisi.';
+            $_SESSION['message'] = 'Field wajib seperti nama, kategori, deskripsi, tanggal, dan lokasi harus diisi.';
             $_SESSION['msg_type'] = 'danger';
             return;
         }
@@ -299,7 +303,7 @@ function handleEventOperations($koneksi) {
                 return;
             }
         }
-
+        
         $buku_panduan_nama = $buku_panduan_lama;
         if (!empty($_FILES['buku_panduan']['name'])) {
             if ($buku_panduan_lama && file_exists("../../../Uploads/event_panduan/" . $buku_panduan_lama)) {
@@ -313,8 +317,8 @@ function handleEventOperations($koneksi) {
             }
         }
 
-        $stmt = mysqli_prepare($koneksi, "UPDATE event SET ormawa_id = ?, nama_event = ?, kategori = ?, deskripsi = ?, tgl_mulai = ?, tgl_selesai = ?, lokasi = ?, gambar = ?, buku_panduan = ? WHERE id = ?");
-        mysqli_stmt_bind_param($stmt, "issssssssi", $ormawa_id, $nama_event, $kategori, $deskripsi, $tgl_mulai, $tgl_selesai, $lokasi, $gambar_nama, $buku_panduan_nama, $event_id);
+        $stmt = mysqli_prepare($koneksi, "UPDATE event SET ormawa_id = ?, nama_event = ?, kategori = ?, deskripsi = ?, tgl_mulai = ?, tgl_selesai = ?, waktu_mulai = ?, waktu_selesai = ?, lokasi = ?, gambar = ?, buku_panduan = ? WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "issssssssssi", $ormawa_id, $nama_event, $kategori, $deskripsi, $tgl_mulai, $tgl_selesai, $waktu_mulai, $waktu_selesai, $lokasi, $gambar_nama, $buku_panduan_nama, $event_id);
 
         if (mysqli_stmt_execute($stmt)) {
             $_SESSION['message'] = 'Event berhasil diperbarui.';

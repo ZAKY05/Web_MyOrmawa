@@ -34,7 +34,6 @@ if ($conn === null) {
 try {
     switch ($action) {
         case 'login':
-            // Logic from login.php
             if (!isset($data['email']) || empty(trim($data['email']))) {
                 sendResponse('error', 'Email is required', null, 400);
             }
@@ -69,7 +68,9 @@ try {
                     'full_name' => $user['full_name'],
                     'email' => $user['email'],
                     'program_studi' => $user['program_studi'],
-                    'angkatan' => $user['angkatan']
+                    'angkatan' => $user['angkatan'],
+                    'level' => (int)$user['level'],
+                    'id_ormawa' => isset($user['id_ormawa']) ? (int)$user['id_ormawa'] : null
                 ]
             ]);
             break;
