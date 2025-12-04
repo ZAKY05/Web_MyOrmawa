@@ -1,14 +1,12 @@
 <?php
 include_once(__DIR__ . '/Header.php');
 include_once(__DIR__ . '/../FormData/TambahAbsensi.php');
-
 $path_koneksi = __DIR__ . '/../../../Config/ConnectDB.php';
 if (file_exists($path_koneksi)) {
     $koneksi = include($path_koneksi);
 } else {
     die("Error: File koneksi tidak ditemukan di $path_koneksi");
 }
-
 $user_level = $_SESSION['user_level'] ?? 0;
 $ormawa_id = $_SESSION['ormawa_id'] ?? 0;
 
@@ -21,12 +19,11 @@ function getPesertaCount($koneksi, $kehadiran_id)
     $res = mysqli_stmt_get_result($stmt);
     $row = mysqli_fetch_assoc($res);
     mysqli_stmt_close($stmt);
-    return $row ? (int)$row['c'] : 0;
+    return $row ? (int) $row['c'] : 0;
 }
 
 $sessions = [];
 if ($user_level == 2 && $koneksi) {
-    // ✅ Query dengan CASE: otomatis ubah status jadi 'selesai' jika waktu_selesai < sekarang
     $query = "
         SELECT 
             id, judul_rapat, waktu_mulai, waktu_selesai, kode_unik,
@@ -50,7 +47,6 @@ if ($user_level == 2 && $koneksi) {
     mysqli_stmt_close($stmt);
 }
 ?>
-
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-qrcode me-2"></i>Absensi Rapat Internal</h1>
@@ -58,7 +54,6 @@ if ($user_level == 2 && $koneksi) {
             <i class="fas fa-plus me-1"></i> Buat Sesi Absensi
         </button>
     </div>
-
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Riwayat Sesi</h6>
@@ -81,7 +76,8 @@ if ($user_level == 2 && $koneksi) {
                         </thead>
                         <tbody>
                             <?php $no = 1; foreach ($sessions as $s): ?>
-                                <tr data-ormawa-id="<?= (int)$s['ormawa_id']; ?>">
+                                <tr data-ormawa-id="<?= (int) $s['ormawa_id']; ?>"
+                                    data-status="<?= htmlspecialchars($s['status']); ?>">
                                     <td><?= $no++; ?></td>
                                     <td><?= htmlspecialchars($s['judul_rapat']); ?></td>
                                     <td>
@@ -102,16 +98,23 @@ if ($user_level == 2 && $koneksi) {
                                     </td>
                                     <td class="text-nowrap">
                                         <button class="btn btn-sm btn-info me-1"
-                                            onclick="tampilkanQR('<?= addslashes($s['kode_unik']) ?>', '<?= addslashes($s['judul_rapat']) ?>', '<?= $s['waktu_selesai'] ?>')"
+                                            onclick="tampilkanQR('<?= addslashes($s['kode_unik']) ?>', '<?= addslashes($s['judul_rapat']) ?>', '<?= $s['waktu_selesai'] ?>', '<?= $s['status'] ?>')"
                                             data-bs-toggle="modal" data-bs-target="#qrModal" title="Tampilkan QR">
                                             <i class="fas fa-qrcode"></i>
+                                        </button>
+                                        <!-- Tombol Ekspor ke Excel -->
+                                        <button class="btn btn-sm btn-success me-1"
+                                            onclick="exportToExcel(<?= $s['id'] ?>)"
+                                            title="Ekspor ke Excel">
+                                            <i class="fas fa-file-excel"></i>
                                         </button>
                                         <button class="btn btn-sm btn-warning me-1" onclick="loadPeserta(<?= $s['id'] ?>)"
                                             data-bs-toggle="modal" data-bs-target="#lihatPesertaModal" title="Lihat Peserta">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <?php if ($s['status'] == 'aktif'): ?>
-                                            <button class="btn btn-sm btn-danger" onclick="selesaiSesi(<?= $s['id'] ?>)" title="Akhiri Sesi">
+                                            <button class="btn btn-sm btn-danger" onclick="selesaiSesi(<?= $s['id'] ?>)"
+                                                title="Akhiri Sesi">
                                                 <i class="fas fa-stop"></i>
                                             </button>
                                         <?php endif; ?>
@@ -163,43 +166,76 @@ if ($user_level == 2 && $koneksi) {
 </div>
 
 <?php include_once(__DIR__ . '/Footer.php'); ?>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js  "></script>
 <script>
     const BASE_URL_API = "../../../Function/AbsensiFunction.php";
     let countdownInterval;
 
-    function tampilkanQR(kode, judul, waktuSelesai) {
+    function exportToExcel(kehadiranId) {
+        // Buat elemen link sementara
+        const link = document.createElement('a');
+        link.href = '../../../Function/ExportAbsensiFunction.php?kehadiran_id=' + kehadiranId;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function tampilkanQR(kode, judul, waktuSelesai, status) {
         document.getElementById('qrJudul').innerText = judul;
         const container = document.getElementById('qrCanvas');
         container.innerHTML = "";
+        
         new QRCode(container, {
             text: JSON.stringify({ type: "ABSENSI_ORMAWA", kode: kode }),
             width: 220, height: 220
         });
 
         clearInterval(countdownInterval);
-        if (waktuSelesai && waktuSelesai !== '0000-00-00 00:00:00') {
-            startCountdown(waktuSelesai);
-        } else {
-            document.getElementById('countdownTimer').innerText = 'Waktu tidak tersedia';
+
+        // ✅ PERBAIKAN: Cek status sesi terlebih dahulu
+        if (status === 'selesai') {
+            document.getElementById('countdownTimer').innerHTML = 
+                '<span class="text-danger fw-bold">Sesi Sudah Berakhir</span>';
+            return;
         }
+
+        // ✅ PERBAIKAN: Validasi waktu_selesai sebelum parsing
+        if (!waktuSelesai || waktuSelesai === '0000-00-00 00:00:00') {
+            document.getElementById('countdownTimer').innerText = 'Waktu tidak tersedia';
+            return;
+        }
+
+        startCountdown(waktuSelesai);
     }
 
     function startCountdown(endTimeString) {
-        const endTime = new Date(endTimeString).getTime();
+        // ✅ PERBAIKAN: Parse waktu dengan format yang benar
+        const endTime = new Date(endTimeString.replace(' ', 'T')).getTime();
         const el = document.getElementById('countdownTimer');
+
+        // ✅ PERBAIKAN: Cek apakah parsing berhasil
+        if (isNaN(endTime)) {
+            el.innerHTML = '<span class="text-warning">Format waktu tidak valid</span>';
+            return;
+        }
+
         countdownInterval = setInterval(() => {
             const now = new Date().getTime();
             const diff = endTime - now;
+
+            // ✅ PERBAIKAN: Jika waktu sudah habis
             if (diff < 0) {
                 clearInterval(countdownInterval);
-                el.innerHTML = '<span class="text-danger">Waktu Habis!</span>';
+                el.innerHTML = '<span class="text-danger fw-bold">Waktu Habis!</span>';
                 return;
             }
-            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+            // ✅ PERBAIKAN: Hitung jam, menit, detik dengan benar
+            const h = Math.floor(diff / (1000 * 60 * 60));
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const s = Math.floor((diff % (1000 * 60)) / 1000);
+
             el.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }, 1000);
     }
@@ -212,7 +248,7 @@ if ($user_level == 2 && $koneksi) {
         Swal.fire({
             title: 'Akhiri Sesi Absensi?',
             html: `Apakah Anda yakin ingin mengakhiri sesi ini?<br>
-               <small class="text-muted">Peserta tidak dapat absen lagi setelah sesi dihentikan.</small>`,
+                   <small class="text-muted">Peserta tidak dapat absen lagi setelah sesi dihentikan.</small>`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: '<i class="fas fa-stop me-1"></i> Ya, Hentikan!',
@@ -253,7 +289,7 @@ if ($user_level == 2 && $koneksi) {
     function loadPeserta(id) {
         const el = document.getElementById('pesertaList');
         el.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2">Memuat...</p></div>';
-        
+
         fetch(`${BASE_URL_API}?action=get_peserta&kehadiran_id=${id}`)
             .then(r => r.json())
             .then(data => {
@@ -264,10 +300,32 @@ if ($user_level == 2 && $koneksi) {
                     </div>`;
                     return;
                 }
-                
+
+                // ✅ Hitung statistik
+                let tepat = 0, terlambat = 0;
+                data.peserta.forEach(p => {
+                    if (p.status_kehadiran === 'Hadir') tepat++;
+                    else if (p.status_kehadiran === 'Terlambat') terlambat++;
+                });
+
                 let html = `<div class="alert alert-info mb-3">
-                    <i class="fas fa-info-circle"></i> 
-                    Total peserta: <strong>${data.peserta.length}</strong> orang
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <i class="fas fa-users"></i><br>
+                            <strong>${data.peserta.length}</strong><br>
+                            <small>Total</small>
+                        </div>
+                        <div class="col-4">
+                            <i class="fas fa-check-circle text-success"></i><br>
+                            <strong>${tepat}</strong><br>
+                            <small>Tepat Waktu</small>
+                        </div>
+                        <div class="col-4">
+                            <i class="fas fa-exclamation-triangle text-warning"></i><br>
+                            <strong>${terlambat}</strong><br>
+                            <small>Terlambat</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover">
@@ -280,23 +338,32 @@ if ($user_level == 2 && $koneksi) {
                             </tr>
                         </thead>
                         <tbody>`;
-                
+
                 data.peserta.forEach((p, i) => {
                     const nama = p.full_name || '—';
-                    const waktu = p.waktu_absen 
-                        ? new Date(p.waktu_absen).toLocaleString('id-ID', { hour12: false })
+                    const waktu = p.waktu_absen
+                        ? new Date(p.waktu_absen).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                        })
                         : '—';
                     const status = p.status_kehadiran || 'Hadir';
                     const badgeClass = status === 'Terlambat' ? 'bg-warning text-dark' : 'bg-success';
-                    
+                    const icon = status === 'Terlambat' ? 'fa-exclamation-triangle' : 'fa-check-circle';
+
                     html += `<tr>
                         <td>${i + 1}</td>
                         <td><strong>${nama}</strong></td>
                         <td><small><i class="far fa-clock"></i> ${waktu}</small></td>
-                        <td><span class="badge ${badgeClass}">${status}</span></td>
+                        <td><span class="badge ${badgeClass}"><i class="fas ${icon} me-1"></i>${status}</span></td>
                     </tr>`;
                 });
-                
+
                 html += '</tbody></table></div>';
                 el.innerHTML = html;
             })
