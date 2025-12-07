@@ -1,4 +1,19 @@
-# MyOrmawa - Sistem Manajemen Organisasi Mahasiswa
+<div align="center">
+
+# 🏛️ MyOrmawa - Sistem Manajemen Organisasi Mahasiswa
+
+[![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
+[![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+**Platform Terpadu untuk Mengelola Organisasi Mahasiswa di Perguruan Tinggi**
+
+<samp>Dirancang khusus untuk Politeknik Negeri Jember | Sistem Manajemen Organisasi Mahasiswa yang Komprehensif</samp>
+
+</div>
+
+---
 
 MyOrmawa adalah aplikasi berbasis web yang komprehensif yang dirancang untuk mengelola organisasi mahasiswa (Ormawa) di perguruan tinggi, terutama dikembangkan untuk Politeknik Negeri Jember. Sistem ini menyediakan platform terpusat untuk mengelola berbagai organisasi mahasiswa, acara, kompetisi, proses rekrutmen, dan pelacakan kehadiran.
 
@@ -20,8 +35,8 @@ MyOrmawa dibangun untuk menyederhanakan pengelolaan organisasi mahasiswa di perg
 
 ## Fitur-fitur
 
-### Fitur Inti
-- **Manajemen Pengguna Multi-tingkat**: Super Admin, Admin, Pengurus, dan tingkatan Member biasa
+### 🏢 Fitur Inti
+- **Manajmen Pengguna Multi-tingkat**: Super Admin, Admin, Pengurus, dan tingkatan Member biasa
 - **Manajemen ORMAWA**: Kelola berbagai organisasi mahasiswa dengan detail, kategori, dan informasi mereka
 - **Manajemen Acara**: Buat dan kelola acara untuk berbagai organisasi
 - **Manajemen Kompetisi**: Tangani kompetisi dengan pendaftaran, panduan, dan materi
@@ -31,21 +46,21 @@ MyOrmawa dibangun untuk menyederhanakan pengelolaan organisasi mahasiswa di perg
 - **Verifikasi Email**: Verifikasi email berbasis OTP untuk pendaftaran pengguna
 - **Ekspor ke Excel**: Ekspor pengajuan dan data ke format Excel
 
-### Otentikasi & Keamanan
+### 🔐 Otentikasi & Keamanan
 - Pendaftaran pengguna dengan verifikasi email
 - Fungsi reset kata sandi
 - Kontrol akses multi-tingkat
 - Manajemen sesi
 - Verifikasi berbasis OTP untuk operasi sensitif
 
-### Sistem Kehadiran
+### 📍 Sistem Kehadiran
 - Sistem check-in berbasis kode QR
 - Validasi berbasis lokasi menggunakan koordinat GPS
 - Pelacakan riwayat check-in
 - Perhitungan jarak dari lokasi yang ditentukan
 - Dukungan untuk skenario check-in online dan offline
 
-### Pembuat Formulir & Pengajuan
+### 📝 Pembuat Formulir & Pengajuan
 - Pembuat formulir dinamis untuk rekrutmen
 - Manajemen pengajuan dengan sistem persetujuan/penolakan
 - Ekspor pengajuan formulir ke Excel
@@ -152,31 +167,34 @@ Aplikasi ini menggunakan database MySQL dengan tabel-tabel utama berikut:
 
 ## Endpoint API
 
-### API Otentikasi (`API/auth.php`)
-- `POST /auth.php?action=login` - Login pengguna
-- `POST /auth.php?action=register` - Pendaftaran pengguna
-- `POST /auth.php?action=verify_otp` - Verifikasi OTP
-- `POST /auth.php?action=forgot_password` - Permintaan reset kata sandi
-- `POST /auth.php?action=reset_password` - Reset kata sandi
-- `POST /auth.php?action=change_password` - Ganti kata sandi
-- `POST /auth.php?action=change_email` - Ganti alamat email
-- `POST /auth.php?action=resend_otp` - Kirim ulang OTP
+<div align="center">
 
-### API Kehadiran (`API/attendance.php`)
-- `POST /attendance.php?action=verify_qr` - Verifikasi kode QR untuk check-in
-- `POST /attendance.php?action=check_in` - Lakukan check-in
-- `GET /attendance.php?action=get_history&user_id={id}` - Dapatkan riwayat check-in
+| Kategori | File | Fungsi |
+|:--------:|:----:|:-------|
+| 🔐 **Otentikasi** | `API/auth.php` | |
+| | `POST /auth.php?action=login` | Login pengguna |
+| | `POST /auth.php?action=register` | Pendaftaran pengguna |
+| | `POST /auth.php?action=verify_otp` | Verifikasi OTP |
+| | `POST /auth.php?action=forgot_password` | Permintaan reset kata sandi |
+| | `POST /auth.php?action=reset_password` | Reset kata sandi |
+| | `POST /auth.php?action=change_password` | Ganti kata sandi |
+| | `POST /auth.php?action=change_email` | Ganti alamat email |
+| | `POST /auth.php?action=resend_otp` | Kirim ulang OTP |
+| 📍 **Kehadiran** | `API/attendance.php` | |
+| | `POST /attendance.php?action=verify_qr` | Verifikasi kode QR untuk check-in |
+| | `POST /attendance.php?action=check_in` | Lakukan check-in |
+| | `GET /attendance.php?action=get_history&user_id={id}` | Dapatkan riwayat check-in |
+| 📅 **Kalender** | `API/calendar.php` | |
+| | `GET /calendar.php` | Dapatkan acara-acara mendatang untuk kalender |
+| 🏆 **Kompetisi** | `API/competition.php` | |
+| | `GET /competition.php` | Dapatkan semua kompetisi mendatang |
+| | `GET /competition.php?id={id}` | Dapatkan kompetisi spesifik |
+| | `GET /competition.php?ormawa_id={id}` | Dapatkan kompetisi berdasarkan ORMWA |
+| | `POST /competition.php` | Buat kompetisi baru |
+| | `PUT /competition.php` | Perbarui kompetisi |
+| | `DELETE /competition.php` | Hapus kompetisi |
 
-### API Kalender (`API/calendar.php`)
-- `GET /calendar.php` - Dapatkan acara-acara mendatang untuk kalender
-
-### API Kompetisi (`API/competition.php`)
-- `GET /competition.php` - Dapatkan semua kompetisi mendatang
-- `GET /competition.php?id={id}` - Dapatkan kompetisi spesifik
-- `GET /competition.php?ormawa_id={id}` - Dapatkan kompetisi berdasarkan ORMWA
-- `POST /competition.php` - Buat kompetisi baru
-- `PUT /competition.php` - Perbarui kompetisi
-- `DELETE /competition.php` - Hapus kompetisi
+</div>
 
 ## Penggunaan
 
@@ -204,11 +222,30 @@ Aplikasi ini menggunakan database MySQL dengan tabel-tabel utama berikut:
 
 ## Kontribusi
 
-1. Fork repository
-2. Buat branch fitur (`git checkout -b feature/AmazingFeature`)
-3. Commit perubahan Anda (`git commit -m 'Add some AmazingFeature'`)
-4. Push ke branch (`git push origin feature/AmazingFeature`)
-5. Buka Pull Request
+<div align="center">
+
+### Cara Berkontribusi
+
+1. 🍴 **Fork** repository ini
+2. 🌱 Buat branch fitur Anda (`git checkout -b feature/AmazingFeature`)
+3. 📝 **Commit** perubahan Anda (`git commit -m 'Add some AmazingFeature'`)
+4. 📤 **Push** ke branch (`git push origin feature/AmazingFeature`)
+5. 🔄 Buka **Pull Request**
+
+</div>
+
+## Screenshots
+
+<div align="center">
+
+<!-- Tambahkan screenshots aplikasi di sini -->
+<!-- ![Screenshot 1](screenshots/screenshot1.png) -->
+<!-- ![Screenshot 2](screenshots/screenshot2.png) -->
+<!-- ![Screenshot 3](screenshots/screenshot3.png) -->
+
+<i>Beberapa contoh tampilan aplikasi akan segera ditambahkan.</i>
+
+</div>
 
 ## Lisensi
 
