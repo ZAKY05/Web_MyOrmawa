@@ -1,222 +1,222 @@
-# MyOrmawa - Organisasi Mahasiswa Management System
+# MyOrmawa - Sistem Manajemen Organisasi Mahasiswa
 
-MyOrmawa is a comprehensive web-based application designed to manage student organizations (Ormawa) in universities, primarily developed for Politeknik Negeri Jember. The system provides a centralized platform for managing multiple student organizations, events, competitions, recruitment processes, and attendance tracking.
+MyOrmawa adalah aplikasi berbasis web yang komprehensif yang dirancang untuk mengelola organisasi mahasiswa (Ormawa) di perguruan tinggi, terutama dikembangkan untuk Politeknik Negeri Jember. Sistem ini menyediakan platform terpusat untuk mengelola berbagai organisasi mahasiswa, acara, kompetisi, proses rekrutmen, dan pelacakan kehadiran.
 
-## Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Database Structure](#database-structure)
-- [API Endpoints](#api-endpoints)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+## Daftar Isi
+- [Ikhtisar](#ikhtisar)
+- [Fitur-fitur](#fitur-fitur)
+- [Teknologi yang Digunakan](#teknologi-yang-digunakan)
+- [Struktur Proyek](#struktur-proyek)
+- [Instalasi](#instalasi)
+- [Struktur Database](#struktur-database)
+- [Endpoint API](#endpoint-api)
+- [Penggunaan](#penggunaan)
+- [Kontribusi](#kontribusi)
+- [Lisensi](#lisensi)
 
-## Overview
+## Ikhtisar
 
-MyOrmawa is built to streamline the management of student organizations at universities. The platform offers different access levels for Super Admins, Admins, and regular users, with features for managing events, competitions, recruitment processes, and attendance systems. The system uses a role-based access control mechanism to ensure proper authorization across different levels of users.
+MyOrmawa dibangun untuk menyederhanakan pengelolaan organisasi mahasiswa di perguruan tinggi. Platform ini menawarkan berbagai tingkatan akses untuk Super Admin, Admin, dan pengguna biasa, dengan fitur-fitur untuk mengelola acara, kompetisi, proses rekrutmen, dan sistem kehadiran. Sistem ini menggunakan mekanisme kontrol akses berbasis peran untuk memastikan otorisasi yang tepat di berbagai tingkatan pengguna.
 
-## Features
+## Fitur-fitur
 
-### Core Features
-- **Multi-level User Management**: Super Admin, Admin, Pengurus, and regular Member levels
-- **ORMAWA Management**: Manage multiple student organizations with their details, categories, and information
-- **Event Management**: Create and manage events for different organizations
-- **Competition Management**: Handle competitions with registration, guides, and materials
-- **Attendance System**: QR code based check-in system with location validation
-- **Recruitment Management**: Open Recruitment (OpRec) system for both organization members and event committees
-- **Document Management**: Manage documents related to organizations and activities
-- **Email Verification**: OTP-based email verification for user registration
-- **Excel Export**: Export submissions and data to Excel format
+### Fitur Inti
+- **Manajemen Pengguna Multi-tingkat**: Super Admin, Admin, Pengurus, dan tingkatan Member biasa
+- **Manajemen ORMAWA**: Kelola berbagai organisasi mahasiswa dengan detail, kategori, dan informasi mereka
+- **Manajemen Acara**: Buat dan kelola acara untuk berbagai organisasi
+- **Manajemen Kompetisi**: Tangani kompetisi dengan pendaftaran, panduan, dan materi
+- **Sistem Kehadiran**: Sistem check-in berbasis kode QR dengan validasi lokasi
+- **Manajemen Rekrutmen**: Sistem Open Recruitment (OpRec) untuk anggota organisasi dan panitia acara
+- **Manajemen Dokumen**: Kelola dokumen yang terkait dengan organisasi dan kegiatan
+- **Verifikasi Email**: Verifikasi email berbasis OTP untuk pendaftaran pengguna
+- **Ekspor ke Excel**: Ekspor pengajuan dan data ke format Excel
 
-### Authentication & Security
-- User registration with email verification
-- Password reset functionality
-- Multi-level access control
-- Session management
-- OTP-based verification for sensitive operations
+### Otentikasi & Keamanan
+- Pendaftaran pengguna dengan verifikasi email
+- Fungsi reset kata sandi
+- Kontrol akses multi-tingkat
+- Manajemen sesi
+- Verifikasi berbasis OTP untuk operasi sensitif
 
-### Attendance System
-- QR code-based check-in system
-- Location-based validation using GPS coordinates
-- Check-in history tracking
-- Distance calculation from designated location
-- Support for both online and offline check-in scenarios
+### Sistem Kehadiran
+- Sistem check-in berbasis kode QR
+- Validasi berbasis lokasi menggunakan koordinat GPS
+- Pelacakan riwayat check-in
+- Perhitungan jarak dari lokasi yang ditentukan
+- Dukungan untuk skenario check-in online dan offline
 
-### Form Builder & Submissions
-- Dynamic form builder for recruitment
-- Submission management with approval/rejection system
-- Excel export of form submissions
-- File upload support for submissions
-- Status tracking (pending/approved/rejected)
+### Pembuat Formulir & Pengajuan
+- Pembuat formulir dinamis untuk rekrutmen
+- Manajemen pengajuan dengan sistem persetujuan/penolakan
+- Ekspor pengajuan formulir ke Excel
+- Dukungan unggah file untuk pengajuan
+- Pelacakan status (pending/disetujui/ditolak)
 
-## Technology Stack
+## Teknologi yang Digunakan
 
-- **Backend**: PHP 7.4+ 
+- **Backend**: PHP 7.4+
 - **Frontend**: HTML5, CSS3, JavaScript (Bootstrap 5, jQuery)
 - **Database**: MySQL
-- **Framework**: Custom PHP framework with Bootstrap UI components
-- **External Libraries**:
-  - PHPMailer: For email functionality
-  - PhpSpreadsheet: For Excel export functionality
-  - Bootstrap: For responsive UI components
-  - Font Awesome: For icons
-  - Chart.js: For data visualization
-  - DataTables: For responsive tables
-- **API**: RESTful API endpoints for various functionalities
-- **Authentication**: Session and token-based authentication
+- **Framework**: Framework PHP kustom dengan komponen UI Bootstrap
+- **Library Eksternal**:
+  - PHPMailer: Untuk fungsionalitas email
+  - PhpSpreadsheet: Untuk fungsionalitas ekspor Excel
+  - Bootstrap: Untuk komponen UI responsive
+  - Font Awesome: Untuk ikon
+  - Chart.js: Untuk visualisasi data
+  - DataTables: Untuk tabel yang responsive
+- **API**: Endpoint API RESTful untuk berbagai fungsionalitas
+- **Otentikasi**: Otentikasi berbasis sesi dan token
 
-## Project Structure
+## Struktur Proyek
 
 ```
 MyOrmawa/
-├── API/                     # REST API endpoints
-│   ├── attendance.php       # Attendance functionality
-│   ├── auth.php             # Authentication endpoints
-│   ├── calendar.php         # Calendar events
-│   └── competition.php      # Competition management
-├── App/                     # Application views and logic
-│   ├── View/                # View files for different user levels
-│   │   ├── LandingPage/     # Public landing page
-│   │   ├── SuperAdmin/      # Super admin interface
-│   │   ├── Admin/           # Organization admin interface
-│   │   ├── User/            # Pengurus interface
-│   │   └── Member/          # Regular member interface
-├── Asset/                   # CSS, JavaScript, and image assets
-├── Config/                  # Configuration files
-├── Function/                # PHP functions and utilities
-├── includes/                # Helper functions and utilities
-├── logs/                    # Log files
-├── uploads/                 # File uploads (images, documents)
-├── vendor/                  # Composer dependencies
-├── composer.json            # Project dependencies
-├── .htaccess               # Apache configuration
-└── index.php               # Entry point
+├── API/                     # Endpoint REST API
+│   ├── attendance.php       # Fungsionalitas kehadiran
+│   ├── auth.php             # Endpoint otentikasi
+│   ├── calendar.php         # Acara kalender
+│   └── competition.php      # Manajemen kompetisi
+├── App/                     # View aplikasi dan logika
+│   ├── View/                # File view untuk berbagai tingkatan pengguna
+│   │   ├── LandingPage/     # Halaman landing publik
+│   │   ├── SuperAdmin/      # Antarmuka super admin
+│   │   ├── Admin/           # Antarmuka admin organisasi
+│   │   ├── User/            # Antarmuka pengurus
+│   │   └── Member/          # Antarmuka member biasa
+├── Asset/                   # Aset CSS, JavaScript, dan gambar
+├── Config/                  # File konfigurasi
+├── Function/                # Fungsi dan utilitas PHP
+├── includes/                # Fungsi dan utilitas pembantu
+├── logs/                    # File log
+├── uploads/                 # Upload file (gambar, dokumen)
+├── vendor/                  # Dependensi Composer
+├── composer.json            # Dependensi proyek
+├── .htaccess               # Konfigurasi Apache
+└── index.php               # Titik masuk
 ```
 
-## Installation
+## Instalasi
 
-1. **Prerequisites**
-   - Apache Web Server (e.g., XAMPP, WAMP, LAMPP)
-   - PHP 7.4 or higher
-   - MySQL 5.7 or higher
+1. **Prasyarat**
+   - Web Server Apache (misalnya XAMPP, WAMP, LAMPP)
+   - PHP 7.4 atau lebih tinggi
+   - MySQL 5.7 atau lebih tinggi
    - Composer
 
-2. **Setup Instructions**
+2. **Instruksi Instalasi**
 
    ```bash
-   # Clone the repository
+   # Clone repository
    git clone [repository-url]
-   
-   # Navigate to project directory
+
+   # Masuk ke direktori proyek
    cd MyOrmawa
-   
-   # Install dependencies
+
+   # Instal dependensi
    composer install
    ```
 
-3. **Database Setup**
-   - Create a MySQL database (e.g., `myormawa_db_complete`)
-   - Import the database schema (if provided)
-   - Update database credentials in `Config/ConnectDB.php`
+3. **Setup Database**
+   - Buat database MySQL (misalnya `myormawa_db_complete`)
+   - Impor skema database (jika disediakan)
+   - Perbarui kredensial database di `Config/ConnectDB.php`
 
-4. **Configuration**
-   - Set your database credentials in `Config/ConnectDB.php`
-   - Configure email settings in `includes/email_sender.php`
-   - Set proper file permissions for upload directories
+4. **Konfigurasi**
+   - Atur kredensial database di `Config/ConnectDB.php`
+   - Konfigurasi pengaturan email di `includes/email_sender.php`
+   - Atur izin file yang tepat untuk direktori upload
 
-5. **Run the Application**
-   - Start your web server
-   - Access the application via `http://localhost/MyOrmawa/`
-   - The landing page will redirect to the appropriate login page
+5. **Jalankan Aplikasi**
+   - Mulai web server Anda
+   - Akses aplikasi melalui `http://localhost/MyOrmawa/`
+   - Halaman landing akan mengarahkan ke halaman login yang sesuai
 
-## Database Structure
+## Struktur Database
 
-The application uses a MySQL database with the following key tables:
+Aplikasi ini menggunakan database MySQL dengan tabel-tabel utama berikut:
 
-- `user` - Stores user information with different access levels
-- `ormawa` - Contains student organization data
-- `event` - Event information for organizations
-- `kehadiran` - Attendance sessions for check-ins
-- `absensi_log` - Check-in logs and records
-- `kompetisi` - Competition management
-- `lokasi_absen` - Attendance location data
-- `form_info` - Form templates for recruitment
-- `form` - Individual form fields
-- `submit` - Form submission data
-- `dokumen` - Document management
-- `otp_codes` - One-time password codes for verification
-- `login_sessions` - User session management
+- `user` - Menyimpan informasi pengguna dengan berbagai tingkatan akses
+- `ormawa` - Berisi data organisasi mahasiswa
+- `event` - Informasi acara untuk organisasi
+- `kehadiran` - Sesi kehadiran untuk check-in
+- `absensi_log` - Log dan catatan check-in
+- `kompetisi` - Manajemen kompetisi
+- `lokasi_absen` - Data lokasi kehadiran
+- `form_info` - Template formulir untuk rekrutmen
+- `form` - Bidang formulir individu
+- `submit` - Data pengajuan formulir
+- `dokumen` - Manajemen dokumen
+- `otp_codes` - Kode sandi satu kali untuk verifikasi
+- `login_sessions` - Manajemen sesi pengguna
 
-## API Endpoints
+## Endpoint API
 
-### Authentication API (`API/auth.php`)
-- `POST /auth.php?action=login` - User login
-- `POST /auth.php?action=register` - User registration
-- `POST /auth.php?action=verify_otp` - OTP verification
-- `POST /auth.php?action=forgot_password` - Password reset request
-- `POST /auth.php?action=reset_password` - Password reset
-- `POST /auth.php?action=change_password` - Change password
-- `POST /auth.php?action=change_email` - Change email address
-- `POST /auth.php?action=resend_otp` - Resend OTP
+### API Otentikasi (`API/auth.php`)
+- `POST /auth.php?action=login` - Login pengguna
+- `POST /auth.php?action=register` - Pendaftaran pengguna
+- `POST /auth.php?action=verify_otp` - Verifikasi OTP
+- `POST /auth.php?action=forgot_password` - Permintaan reset kata sandi
+- `POST /auth.php?action=reset_password` - Reset kata sandi
+- `POST /auth.php?action=change_password` - Ganti kata sandi
+- `POST /auth.php?action=change_email` - Ganti alamat email
+- `POST /auth.php?action=resend_otp` - Kirim ulang OTP
 
-### Attendance API (`API/attendance.php`)
-- `POST /attendance.php?action=verify_qr` - Verify QR code for check-in
-- `POST /attendance.php?action=check_in` - Perform check-in
-- `GET /attendance.php?action=get_history&user_id={id}` - Get check-in history
+### API Kehadiran (`API/attendance.php`)
+- `POST /attendance.php?action=verify_qr` - Verifikasi kode QR untuk check-in
+- `POST /attendance.php?action=check_in` - Lakukan check-in
+- `GET /attendance.php?action=get_history&user_id={id}` - Dapatkan riwayat check-in
 
-### Calendar API (`API/calendar.php`)
-- `GET /calendar.php` - Get upcoming events for calendar
+### API Kalender (`API/calendar.php`)
+- `GET /calendar.php` - Dapatkan acara-acara mendatang untuk kalender
 
-### Competition API (`API/competition.php`)
-- `GET /competition.php` - Get all upcoming competitions
-- `GET /competition.php?id={id}` - Get specific competition
-- `GET /competition.php?ormawa_id={id}` - Get competitions by ORMWA
-- `POST /competition.php` - Create new competition
-- `PUT /competition.php` - Update competition
-- `DELETE /competition.php` - Delete competition
+### API Kompetisi (`API/competition.php`)
+- `GET /competition.php` - Dapatkan semua kompetisi mendatang
+- `GET /competition.php?id={id}` - Dapatkan kompetisi spesifik
+- `GET /competition.php?ormawa_id={id}` - Dapatkan kompetisi berdasarkan ORMWA
+- `POST /competition.php` - Buat kompetisi baru
+- `PUT /competition.php` - Perbarui kompetisi
+- `DELETE /competition.php` - Hapus kompetisi
 
-## Usage
+## Penggunaan
 
-### User Registration
-1. Navigate to the registration page
-2. Fill in required information (NIM, full name, email, program study)
-3. Verify email through OTP sent to the provided email address
+### Pendaftaran Pengguna
+1. Akses halaman pendaftaran
+2. Isi informasi yang diperlukan (NIM, nama lengkap, email, program studi)
+3. Verifikasi email melalui OTP yang dikirim ke alamat email yang disediakan
 
-### Attendance System
-1. Organizers create attendance sessions with QR codes
-2. Attendees scan QR codes using the attendance application
-3. System validates location (if required) and records check-in
-4. Admins can view attendance reports and history
+### Sistem Kehadiran
+1. Penyelenggara membuat sesi kehadiran dengan kode QR
+2. Peserta memindai kode QR menggunakan aplikasi kehadiran
+3. Sistem memvalidasi lokasi (jika diperlukan) dan mencatat check-in
+4. Admin dapat melihat laporan dan riwayat kehadiran
 
-### Recruitment Process
-1. Admins create recruitment forms with various question types
-2. Candidates fill out the forms online
-3. Admins review submissions and approve/reject applications
-4. Submissions can be exported to Excel for further processing
+### Proses Rekrutmen
+1. Admin membuat formulir rekrutmen dengan berbagai jenis pertanyaan
+2. Kandidat mengisi formulir secara online
+3. Admin meninjau pengajuan dan menyetujui/menolak aplikasi
+4. Pengajuan dapat diekspor ke Excel untuk pemrosesan lebih lanjut
 
-### Event Management
-- Super Admin manages all organizations and their events
-- Admins can create and manage events for their specific organizations
-- Users can view events and participate in them
+### Manajemen Acara
+- Super Admin mengelola semua organisasi dan acara mereka
+- Admin dapat membuat dan mengelola acara untuk organisasi spesifik mereka
+- Pengguna dapat melihat acara dan berpartisipasi di dalamnya
 
-## Contributing
+## Kontribusi
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. Fork repository
+2. Buat branch fitur (`git checkout -b feature/AmazingFeature`)
+3. Commit perubahan Anda (`git commit -m 'Add some AmazingFeature'`)
+4. Push ke branch (`git push origin feature/AmazingFeature`)
+5. Buka Pull Request
 
-## License
+## Lisensi
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Proyek ini dilisensikan di bawah Lisensi MIT - lihat file [LICENSE](LICENSE) untuk detailnya.
 
-## Support
+## Dukungan
 
-For support, email myormawa@gmail.com or create an issue in the repository.
+Untuk dukungan, email myormawa@gmail.com atau buat issue di repository.
 
 ---
-*Developed with ❤️ for Politeknik Negeri Jember student organizations*
+*Dikembangkan dengan ❤️ untuk organisasi mahasiswa Politeknik Negeri Jember*
